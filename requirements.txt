@@ -1,0 +1,16 @@
+edge_tts
+bilibili-api-python
+openai
+langchain~=0.0.286
+ratelimit
+pygame~=2.5.1
+scipy==1.7.3
+
+httpx~=0.24.1
+requests~=2.31.0
+pydantic~=2.3.0
+urllib3==1.27
+aiofiles~=23.2.1
+setuptools~=65.5.1
+
+
