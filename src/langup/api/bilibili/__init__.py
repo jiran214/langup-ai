@@ -5,7 +5,7 @@
 # @File    : __init__.py.py
 # @Desc    :
 from bilibili_api import comment, user, dynamic, Credential, sync, session
-from api.bilibili import video, live
+from langup.api.bilibili import video, live
 
 __all__ = [
     comment,

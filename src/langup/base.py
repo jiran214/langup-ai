@@ -110,6 +110,7 @@ class Reaction(BaseModel, abc.ABC):
 class Uploader(abc.ABC):
     default_system = "You are a Bilibili UP"
     system = None
+    __is_init_config = False
 
     def __init__(
             self,
@@ -120,6 +121,21 @@ class Uploader(abc.ABC):
         self.mq = mq
         self.listeners = listeners
         self.brain = brain or get_simple_chat_chain(system=self.system or self.system or self.default_system)
+        if self.__is_init_config is False:
+            self.init_config()
+            self.__is_init_config = True
+
+    def init_config(self):
+        """只执行一次"""
+        from langup import config
+        import openai
+        for path in (config.tts['voice_path'], config.record['file_path'], config.convert['audio_path']):
+            os.makedirs(path, exist_ok=True)
+
+        if config.proxy:
+            os.environ['HTTPS_PORXY'] = config.proxy
+            os.environ['HTTP_PORXY'] = config.proxy
+            openai.proxy = config.proxy
 
     @abc.abstractmethod
     def execute_sop(self, schema) -> typing.Union[Reaction, List[Reaction]]:

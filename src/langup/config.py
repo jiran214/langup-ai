@@ -24,6 +24,3 @@ convert = {
 openai_api_key = None
 proxy = None
 debug = False
-
-for path in (tts['voice_path'], record['file_path'], convert['audio_path']):
-    os.makedirs(path, exist_ok=True)

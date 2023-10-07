@@ -10,7 +10,7 @@ import httpx
 from bilibili_api import video, HEADERS
 from requests import Session
 
-from api.bilibili.schema import BiliNoteView
+from langup.api.bilibili.schema import BiliNoteView
 
 session = Session()
 session.trust_env = False
