@@ -1,11 +1,11 @@
 from typing import Optional
 
-from langchain import LLMChain
 from langchain.chains.base import Chain
 from langchain.chat_models import ChatOpenAI
+from langchain.chains import LLMChain
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
-import config
+from langup import config
 
 
 def get_simple_chat_chain(

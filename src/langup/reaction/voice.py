@@ -8,8 +8,7 @@ from pprint import pprint
 import edge_tts
 from pygame import mixer, time as pygame_time
 
-import config
-import base
+from langup import config, base
 
 
 audio_lock = threading.Lock()

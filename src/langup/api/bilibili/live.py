@@ -7,11 +7,9 @@
 import asyncio
 
 from bilibili_api import live
-from bilibili_api.utils.credential import Credential
 
-import base
-import config
-from utils import enums
+from langup import base, config
+from langup.utils import enums
 
 
 async def on_danmaku(event_dict):

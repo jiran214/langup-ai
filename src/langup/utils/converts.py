@@ -12,9 +12,9 @@
 # @Desc    :
 from typing import Union
 
-import config
-from api.bcut_asr import get_audio_text_by_bcut
-from api.bilibili.video import Video
+from langup import config
+from langup.api.bcut_asr import get_audio_text_by_bcut
+from langup.api.bilibili.video import Video
 
 
 class Audio2Txt:

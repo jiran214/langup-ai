@@ -4,8 +4,8 @@
 # @Author  : 雷雨
 # @File    : __init__.py.py
 # @Desc    :
-from reaction.bilibili import CommentReaction
-from reaction.voice import TTSSpeakReaction
+from langup.reaction.bilibili import CommentReaction
+from langup.reaction.voice import TTSSpeakReaction
 
 
 __all__ = [

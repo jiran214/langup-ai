@@ -1,10 +1,8 @@
 from pydantic import BaseModel
 
-import api
-import base
-import config
-from utils import vid_transform
-from utils.thread import start_thread
+from langup import api, base, config
+from langup.utils import vid_transform
+from langup.utils.thread import start_thread
 
 
 class SessionAtListener(base.Listener):

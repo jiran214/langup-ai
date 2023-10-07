@@ -4,7 +4,7 @@
 # @Author  : 雷雨
 # @File    : __init__.py.py
 # @Desc    :
-from listener.bilibili import SessionAtListener, LiveListener
+from langup.listener.bilibili import SessionAtListener, LiveListener
 
 
 __all__ = [

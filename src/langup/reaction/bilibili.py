@@ -1,6 +1,5 @@
-import base
-import config
-from api.bilibili import comment
+from langup import base, config
+from langup.api.bilibili import comment
 
 
 class CommentReaction(base.Reaction):

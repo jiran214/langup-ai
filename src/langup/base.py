@@ -16,9 +16,8 @@ from bilibili_api import sync
 from langchain.chains.base import Chain
 from pydantic import BaseModel
 
-import config
-from brain.chains.llm import get_simple_chat_chain
-from utils.thread import Thread, start_thread
+from langup.brain.chains.llm import get_simple_chat_chain
+from langup.utils.thread import Thread, start_thread
 
 
 class MQ(abc.ABC):
@@ -89,7 +88,7 @@ class Record(BaseModel):
     created_time: Optional[str] = None
 
     def save_file(self, path):
-        with open(path, 'a') as f:
+        with open(path, 'a', encoding='utf-8') as f:
             f.write(json.dumps(self.model_dump(), indent=4)+'\n')
 
     def print(self):

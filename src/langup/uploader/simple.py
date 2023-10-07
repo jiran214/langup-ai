@@ -5,12 +5,10 @@ from typing import List
 
 from langchain.chains.base import Chain
 
-import base
-import config
-from brain.chains import llm
-import listener
-import reaction
-from utils import enums
+from langup import base, config, listener
+from langup import reaction
+from langup.brain.chains import llm
+from langup.utils import enums
 
 
 class CommentAtReplyUP(base.Uploader):

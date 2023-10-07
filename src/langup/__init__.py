@@ -1,9 +1,13 @@
-import config
+# import os
+# import sys
+#
+# sys.path.insert(0, os.path.dirname(__file__))
 
-from uploader.simple import VtuBer
+from langup import config
 
+from langup.uploader.simple import VtuBer
 from bilibili_api import Credential
-from utils.converts import Audio2Txt
+from langup.utils.converts import Audio2Txt
 
 
 __all__ = [
