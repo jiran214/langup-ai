@@ -2,6 +2,9 @@ import asyncio
 import threading
 import time
 import os
+
+from pydantic import Field
+
 os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = ""
 
 from pprint import pprint
@@ -14,12 +17,9 @@ from langup import config, base
 audio_lock = threading.Lock()
 
 
-tts_cfg = config.tts.copy()
-tts_cfg['proxy'] = config.proxy
-voice_path = tts_cfg.pop('voice_path')
-
-
-async def tts_save(text):
+async def tts_save(tts_cfg, text):
+    tts_cfg['proxy'] = config.proxy
+    voice_path = tts_cfg.pop('voice_path')
     tts = edge_tts.Communicate(text=text, **tts_cfg)
     path = f"{voice_path}{str(time.time())[:10]}.mp3"
     await tts.save(path)
@@ -45,9 +45,10 @@ def list_voices():
 
 class TTSSpeakReaction(base.Reaction):
     audio_txt: str
+    tts_cfg: dict = Field(default_factory=config.tts.copy)
 
     async def areact(self):
-        path = await tts_save(self.audio_txt)
+        path = await tts_save(self.tts_cfg, self.audio_txt)
         play_sound(path)
 
 
