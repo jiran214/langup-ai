@@ -23,6 +23,8 @@
   
 
 ## 快速开始
+安装完成后，新建.py文件复制以下代码（注意：采用方式二安装时，可以在src/langup下新建）
+
 <details>
     <summary>Bilibili 直播数字人</summary>
 <br>
@@ -61,7 +63,14 @@ up.loop()
 # TodoList
 - Uploader
   - Vtuber
-    -[x] 基本功能
+    - [X] 基本功能
 - Listener
 - Reaction
 - 其它
+
+# 小提示
+<details>
+    <summary>国内访问ChatGPT：Vercel反向代理openai api</summary>
+    见<a href="https://github.com/jiran214/proxy" target="_blank">
+<br>
+</details>

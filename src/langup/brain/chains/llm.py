@@ -14,7 +14,11 @@ def get_simple_chat_chain(
         chat_model_kwargs: Optional[dict] = None,
         llm_chain_kwargs: Optional[dict] = None,
 ) -> Chain:
-    chat_model = ChatOpenAI(openai_api_key=openai_api_key or config.openai_api_key, openai_proxy=config.proxy, **chat_model_kwargs or {})
+    chat_model = ChatOpenAI(
+        openai_api_key=openai_api_key or config.openai_api_key,
+        openai_proxy=config.proxy, **chat_model_kwargs or {},
+        openai_api_base=config.openai_baseurl
+    )
     template = system
     system_message_prompt = SystemMessagePromptTemplate.from_template(template)
     human_template = "{text}"
