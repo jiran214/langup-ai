@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Time    : 2023/9/12 11:38
-# @Author  : 雷雨
-# @File    : bilibili.py
-# @Desc    :
 import asyncio
 
 from bilibili_api import live

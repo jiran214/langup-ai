@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Time    : 2023/9/12 11:33
-# @Author  : 雷雨
-# @File    : enums.py
-# @Desc    :
 import enum
 
 

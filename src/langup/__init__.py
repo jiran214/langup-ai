@@ -1,4 +1,5 @@
 try:
+    # python版本和pydantic不兼容问题
     from langchain.chains.base import Chain
 except:
     from pydantic.v1 import typing

@@ -1,8 +1,8 @@
 from pydantic import BaseModel
 
-import api
-from api.bilibili import sync
-from listener.bilibili import *
+
+from langup.api.bilibili import sync
+from langup.listener.bilibili import *
 
 
 class TestModel(BaseModel):

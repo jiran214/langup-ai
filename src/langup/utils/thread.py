@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Time    : 2023/9/15 15:47
-# @Author  : 雷雨
-# @File    : thread.py
-# @Desc    :
 import threading
 from typing import List, Callable, Type
 
@@ -19,14 +15,20 @@ def start_thread(job: Callable):
 
 def Thread(
         listeners: List[Type['base.Listener']],
-        uploader: 'base.Uploader'
+        uploader: 'base.Uploader',
+        concurrent_num: int = 1
 ):
     """初始化listeners和uploader，异步运行"""
+    threads = []
     for listener_cls in listeners:
         listener = listener_cls([uploader.mq])
-        start_thread(lambda: sync(listener.alisten()))
-    t = start_thread(lambda: sync(uploader.wait()))
-    return t
+        threads.append(start_thread(lambda: sync(listener.alisten())))
+
+    for _ in range(concurrent_num):
+        threads.append(
+            start_thread(lambda: sync(uploader.wait()))
+        )
+    return threads
 
 
 __all__ = [

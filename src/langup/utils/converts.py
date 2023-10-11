@@ -1,15 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Time    : 2023/10/6 17:31
-# @Author  : 雷雨
-# @File    : converts.py
-# @Desc    :
-# !/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2023/9/15 14:16
-# @Author  : 雷雨
-# @File    : __init__.py.py
-# @Desc    :
 from typing import Union
 
 from langup import config

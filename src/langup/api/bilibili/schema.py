@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Time    : 2023/9/21 15:00
-# @Author  : 雷雨
-# @File    : bilibili_schema.py
-# @Desc    :
 from typing import List
 
 from pydantic import BaseModel

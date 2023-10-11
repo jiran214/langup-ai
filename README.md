@@ -1,19 +1,33 @@
-# langup
-后AGI时代社交网络机器人
+# Langup
+<p align='center'>
+   langup = llm + bot
+<br>
+<br>
+    AGI时代通用机器人
+</p>
 
 ## 安装
-```shell
-pip install langup
-```
+环境：python>=3.8
+
+- 方式一
+  ```shell
+  pip install langup
+  ```
+- 方式二(建议使用python 虚拟环境)
+  ```shell
+  git clone https://github.com/jiran214/langup-ai/tree/master
+  cd langup-ai/
+  python -m pip install –upgrade pip
+  python -m pip install -r requirements.txt
+  ```
+  
 
 ## 快速开始
+<details>
+    <summary>Bilibili 直播数字人</summary>
+<br>
+
 ```python
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-# @Time    : 2023/10/6 14:08
-# @Author  : 雷雨
-# @File    : Vtuber.py
-# @Desc    :
 from langup import Credential, config, VtuBer
 
 # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
@@ -25,12 +39,29 @@ config.credential = Credential(**{
     # "ac_time_value": ''
 })
 
-config.openai_api_key = """xxx"""
+# config.openai_api_key = 'xxx'  # 同下，配置一次即可
+# config.proxy = 'http://127.0.0.1:7890'  # 国内访问需要代理，也可以通过Vercel、Cloudfare反代
+# config.openai_baseurl = '...'  # 不了解的跳过
+
 
 up = VtuBer(
-    system='你是一个直播主播，你的人设是杠精，你会反驳对你说的任何话，语言幽默风趣，不要告诉观众你的人设和你身份',
-    room_id=30974597,
-    openai_api_key=None
+    system='你是一个直播主播，你的人设是杠精，你会反驳对你说的任何话，语言幽默风趣，不要告诉观众你的人设和你身份',  # 人设
+    room_id=30974597,  # Bilibili房间号
+    openai_api_key="""xxx"""  # 同上
 )
 up.loop()
 ```
+</details>
+
+更多机器人开发中...
+
+# 架构
+<img align="center" width="100%" height="auto" src="https://github-production-user-asset-6210df.s3.amazonaws.com/50035229/250274252-7f07a95e-b5aa-4dd8-90e7-5fb3bfb863c7.svg" >
+
+# TodoList
+- Uploader
+  - Vtuber
+    -[x] 基本功能
+- Listener
+- Reaction
+- 其它
