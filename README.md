@@ -9,7 +9,7 @@
 ## 安装
 环境：python>=3.8
 
-- 方式一
+- 方式一(暂时不可用)
   ```shell
   pip install langup
   ```
@@ -57,10 +57,10 @@ up.loop()
 
 更多机器人开发中...
 
-# 架构
+## 架构设计
 <img align="center" width="100%" height="auto" src="https://github.com/jiran214/langup-ai/blob/master/docs/jiagou.png?raw=true" >
 
-# TodoList
+## TodoList
 - Uploader
   - Vtuber
     - [X] 基本功能
@@ -68,7 +68,7 @@ up.loop()
 - Reaction
 - 其它
 
-# 小提示
+## 小提示
 <details>
     <summary>国内访问ChatGPT：Vercel反向代理openai api</summary>
     <img src="https://camo.githubusercontent.com/5e471e99e8e022cf454693e38ec843036ec6301e27ee1e1fa10325b1cb720584/68747470733a2f2f76657263656c2e636f6d2f627574746f6e" alt="Vercel" data-canonical-src="https://vercel.com/button" style="max-width: 100%;">
