@@ -1,9 +1,9 @@
-# Langup
+# <center> Langup
 <p align='center'>
-   langup = llm + bot
+   llm + bot
 <br>
 <br>
-    AGI时代通用机器人
+    🚀AGI时代通用机器人🚀
 </p>
 
 ## 安装
@@ -15,7 +15,7 @@
   ```
 - 方式二(建议使用python 虚拟环境)
   ```shell
-  git clone https://github.com/jiran214/langup-ai/tree/master
+  git clone https://github.com/jiran214/langup-ai.git
   cd langup-ai/
   python -m pip install –upgrade pip
   python -m pip install -r requirements.txt
@@ -58,7 +58,7 @@ up.loop()
 更多机器人开发中...
 
 # 架构
-<img align="center" width="100%" height="auto" src="https://github-production-user-asset-6210df.s3.amazonaws.com/50035229/250274252-7f07a95e-b5aa-4dd8-90e7-5fb3bfb863c7.svg" >
+<img align="center" width="100%" height="auto" src="https://github.com/jiran214/langup-ai/blob/master/docs/jiagou.png?raw=true" >
 
 # TodoList
 - Uploader
@@ -71,6 +71,7 @@ up.loop()
 # 小提示
 <details>
     <summary>国内访问ChatGPT：Vercel反向代理openai api</summary>
-    见<a href="https://github.com/jiran214/proxy" target="_blank">
+    <img src="https://camo.githubusercontent.com/5e471e99e8e022cf454693e38ec843036ec6301e27ee1e1fa10325b1cb720584/68747470733a2f2f76657263656c2e636f6d2f627574746f6e" alt="Vercel" data-canonical-src="https://vercel.com/button" style="max-width: 100%;">
+    具体见 <a href="https://github.com/jiran214/proxy" target="_blank">https://github.com/jiran214/proxy</a>
 <br>
 </details>
