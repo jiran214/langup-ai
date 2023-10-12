@@ -63,7 +63,8 @@ class VtuBer(base.Uploader):
             openai_api_key=None,
             is_filter=True,
             extra_ban_words=None,
-            concurrent_num=1
+            concurrent_num=1,
+            user_input=False
     ):
         """
         bilibili直播数字人
@@ -82,8 +83,12 @@ class VtuBer(base.Uploader):
             chat_model_kwargs={'max_tokens': 150}
         )
         listener.LiveListener.room_id = room_id
+        # listeners = [listener.LiveListener]
+        listeners = []
+        if user_input:
+            listeners.append(listener.ConsoleListener)
         self.ban_word_filter: filters.BanWordsFilter = filters.BanWordsFilter(extra_ban_words=extra_ban_words) if is_filter else None
-        super().__init__([listener.LiveListener], brain=__brain, concurrent_num=concurrent_num)
+        super().__init__(listeners, brain=__brain, concurrent_num=concurrent_num)
 
     def execute_sop(self, schema: listener.LiveListener.Schema) -> typing.Union[None, reaction.TTSSpeakReaction]:
         audio_kwargs = {**schema}

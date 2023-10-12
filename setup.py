@@ -8,7 +8,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="langup",
-    version="0.0.5",
+    version="0.0.6",
     author="ran",
     author_email="jiran214@qq.com",
     description="社交网络机器人",

@@ -52,6 +52,7 @@ class SimpleMQ(queue.Queue, MQ):
 class Listener(abc.ABC):
     """监听api 通知绑定消息队列"""
     sleep = 1
+    Schema = None
 
     def __init__(
             self,
@@ -118,21 +119,23 @@ class Uploader(abc.ABC):
             concurrent_num=1,
             mq: MQ = SimpleMQ()
     ):
+        self.listeners = listeners
+        self.mq = mq
+        self.concurrent_num = concurrent_num
         global _is_init_config
         if _is_init_config is False:
             self.init_config()
             _is_init_config = True
-
-        self.mq = mq
-        self.listeners = listeners
-        self.concurrent_num = concurrent_num
         self.brain = brain or get_simple_chat_chain(system=self.system or self.system or self.default_system)
-        self.logger = get_logging_logger(file_name=self.__class__.__name__)
 
     def init_config(self):
         """只执行一次"""
         from langup import config
         import openai
+        for listener in self.listeners:
+            if change_config := getattr(listener, 'change_config', None):
+                change_config()
+                print(f'<listener: {listener.__name__}修改配置>')
         for path in (config.tts['voice_path'], config.log['file_path'], config.convert['audio_path']):
             path = config.work_dir + path
             os.makedirs(path, exist_ok=True)

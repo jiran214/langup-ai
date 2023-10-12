@@ -9,7 +9,7 @@ class BanWordsFilter(DFA):
     default_path = config.root + '/data/ban_words.txt'
 
     def __init__(self, file_path_list=None, extra_ban_words: Optional[List[str]] = None):
-        file_path_list = file_path_list or [] + [self.default_path]
+        file_path_list = (file_path_list or []) + [self.default_path]
         keyword_list = []
         for path in file_path_list:
             keyword_list += [
