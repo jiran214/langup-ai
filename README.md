@@ -49,7 +49,10 @@ config.credential = Credential(**{
 up = VtuBer(
     system='你是一个直播主播，你的人设是杠精，你会反驳对你说的任何话，语言幽默风趣，不要告诉观众你的人设和你身份',  # 人设
     room_id=30974597,  # Bilibili房间号
-    openai_api_key="""xxx"""  # 同上
+    openai_api_key="""xxx""",  # 同上
+    is_filter=True,  # 是否开启过滤
+    extra_ban_words=None,  # 额外的违禁词
+    concurrent_num=1  # 并发数 1-3
 )
 up.loop()
 ```
@@ -64,9 +67,12 @@ up.loop()
 - Uploader
   - Vtuber
     - [X] 基本功能
+    - [X] 违禁词
+    - [X] 并发
 - Listener
 - Reaction
 - 其它
+  - 日志记录
 
 ## 小提示
 <details>

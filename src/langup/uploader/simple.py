@@ -1,11 +1,5 @@
-import datetime
-import time
 import typing
-from typing import List
-
-from langchain.chains.base import Chain
-
-from langup import base, config, listener
+from langup import base, config, listener, BrainType
 from langup import reaction
 from langup.brain.chains import llm
 from langup.utils import enums, filters
@@ -49,7 +43,7 @@ class VtuBer(base.Uploader):
     反应：语音回复
     """
 
-    safe_system = """请你遵守中华人民共和国社会主义核心价值观，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
+    safe_system = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
 
     audio_temple = {
         enums.LiveInputType.danmu: (
@@ -64,34 +58,46 @@ class VtuBer(base.Uploader):
     def __init__(
             self,
             room_id: int,
-            system: str = typing.Optional[None],
-            brain: Chain = typing.Optional[None],
+            system: typing.Optional[str] = None,
+            brain: typing.Optional[BrainType] = None,
             openai_api_key=None,
+            is_filter=True,
+            extra_ban_words=None,
             concurrent_num=1
     ):
+        """
+        bilibili直播数字人
+        :param room_id:  bilibili房间号
+        :param system: 提示词/人设
+        :param brain: langchain chain
+        :param openai_api_key: api_key
+        :param is_filter: 是否开启过滤
+        :param extra_ban_words: 额外的违禁词
+        :param concurrent_num: 并发数
+        """
         assert system or brain, 'system、brain至少提供一个'
-        brain = brain or llm.get_simple_chat_chain(
+        __brain = brain or llm.get_simple_chat_chain(
             system=self.safe_system + system or self.default_system,
             openai_api_key=openai_api_key,
             chat_model_kwargs={'max_tokens': 150}
         )
         listener.LiveListener.room_id = room_id
-        super().__init__([listener.LiveListener], brain=brain, concurrent_num=concurrent_num)
-        self.ban_word_filter: filters.BanWordsFilter = filters.BanWordsFilter()
+        self.ban_word_filter: filters.BanWordsFilter = filters.BanWordsFilter(extra_ban_words=extra_ban_words) if is_filter else None
+        super().__init__([listener.LiveListener], brain=__brain, concurrent_num=concurrent_num)
 
     def execute_sop(self, schema: listener.LiveListener.Schema) -> typing.Union[None, reaction.TTSSpeakReaction]:
         audio_kwargs = {**schema}
         audio_temple = self.audio_temple[schema['type']]
         if schema['type'] is not enums.LiveInputType.gift:
             prompt = schema['text']
-            if words := self.ban_word_filter.match(prompt):
+            if self.ban_word_filter and (words := self.ban_word_filter.match(prompt)):
                 self.logger.warning(f'包含违禁词-{prompt}-{words}')
                 return
-            audio_kwargs['answer'] = self.brain.run(prompt)
+            audio_kwargs['answer'] = self.brain(prompt)
         audio_txt = audio_temple.format(
             **audio_kwargs
         )
-        if words := self.ban_word_filter.match(audio_txt):
+        if self.ban_word_filter and (words := self.ban_word_filter.match(audio_txt)):
             self.logger.warning(f'包含违禁词-{audio_txt}-{words}')
             return
         schema['type'] = schema['type'].value

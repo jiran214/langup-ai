@@ -20,7 +20,6 @@ def singleton(cls):
 
 class DFA:
     def __init__(self, keyword_list: list):
-        print('123')
         self.kw_list = keyword_list
         self.state_event_dict = self._generate_state_event_dict(keyword_list)
 

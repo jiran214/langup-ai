@@ -15,7 +15,7 @@ tts = {
 }
 
 log = {
-    "console": ["print"],  # print,file
+    "console": ["print"],  # print打印生成信息, file文件存储生成信息
     "file_path": "logs/"
 }
 
@@ -24,7 +24,7 @@ convert = {
 }
 
 root = os.path.dirname(__file__)
-openai_api_key = None
-openai_baseurl = None
-proxy = None
-debug = False
+openai_api_key = None  # sk-...
+openai_baseurl = None  # https://{your_domain}/v1
+proxy = None  # 代理
+debug = True

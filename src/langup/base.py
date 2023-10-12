@@ -1,24 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import abc
+import asyncio
 import json
 import os
 import queue
 import time
 import typing
 from datetime import datetime
+from pprint import pprint
 from typing import List, Optional, Callable
 
 from bilibili_api import sync
-from langchain.chains.base import Chain
 from pydantic import BaseModel
 
-from langup import config
+from langup import config, BrainType
 from langup.brain.chains.llm import get_simple_chat_chain
 from langup.utils.logger import get_logging_logger
 from langup.utils.thread import Thread, start_thread
 
-__is_init_config = False
+_is_init_config = False
 
 
 class MQ(abc.ABC):
@@ -83,7 +84,7 @@ class Listener(abc.ABC):
 
 class Record(BaseModel):
     """存档、日志"""
-    listener_schema: typing.Any = None
+    listener_schema: Optional[typing.Any] = None
     react_kwargs: Optional[dict] = None
     time_cost: Optional[str] = None
     created_time: Optional[str] = None
@@ -93,7 +94,7 @@ class Record(BaseModel):
             f.write(json.dumps(self.model_dump(), indent=4)+'\n')
 
     def print(self):
-        print(self)
+        pprint(self.model_dump(exclude_none=True, exclude_defaults=True))
 
 
 class Reaction(BaseModel, abc.ABC):
@@ -108,23 +109,25 @@ class Reaction(BaseModel, abc.ABC):
 class Uploader(abc.ABC):
     default_system = "You are a Bilibili UP"
     system = None
+    SLEEP = 1
 
     def __init__(
             self,
             listeners: List[typing.Type[Listener]],
-            brain: typing.Union[Chain, Callable, None] = None,
+            brain: typing.Union[BrainType, None] = None,
             concurrent_num=1,
             mq: MQ = SimpleMQ()
     ):
+        global _is_init_config
+        if _is_init_config is False:
+            self.init_config()
+            _is_init_config = True
+
         self.mq = mq
         self.listeners = listeners
         self.concurrent_num = concurrent_num
         self.brain = brain or get_simple_chat_chain(system=self.system or self.system or self.default_system)
         self.logger = get_logging_logger(file_name=self.__class__.__name__)
-        global __is_init_config
-        if __is_init_config is False:
-            self.init_config()
-            __is_init_config = True
 
     def init_config(self):
         """只执行一次"""
@@ -146,9 +149,9 @@ class Uploader(abc.ABC):
     def execute_sop(self, schema) -> typing.Union[Reaction, List[Reaction]]:
         ...
 
-    def record(self, schema, time_cost, react_kwargs):
+    def record(self, listener_schema, time_cost, react_kwargs):
         rcd = Record(
-            schema=schema,
+            listener_schema=listener_schema,
             time_cost=time_cost,
             created_time=str(datetime.now()),
             react_kwargs=react_kwargs
@@ -161,26 +164,28 @@ class Uploader(abc.ABC):
     async def wait(self):
         while 1:
             if self.mq.empty():
-                time.sleep(1)
+                time.sleep(self.SLEEP)
                 continue
             schema = self.mq.recv()
             t0 = time.time()
             reaction_instance_list = self.execute_sop(schema)
-            if not isinstance(
-                    reaction_instance_list,
-                    list
-            ):
+            # execute_sop 返回空代表过滤
+            if not reaction_instance_list:
+                continue
+            if not isinstance(reaction_instance_list, list):
                 reaction_instance_list = [reaction_instance_list]
             react_kwargs = {}
+            task_list = []
             for reaction in reaction_instance_list:
                 if config.log['console']:
                     react_kwargs.update(reaction.model_dump())
                 if reaction.block is True:
-                    await reaction.areact()
+                    task_list.append(asyncio.create_task(reaction.areact()))
                 else:
                     start_thread(lambda: sync(reaction.areact()))
             if config.log['console']:
-                self.record(schema=schema, time_cost=str(time.time()-t0).split('.')[0], react_kwargs=react_kwargs)
+                self.record(listener_schema=schema, time_cost=str(time.time()-t0).split('.')[0], react_kwargs=react_kwargs)
+            await asyncio.gather(*task_list)
 
     def loop(self, block=True):
         threads = Thread(

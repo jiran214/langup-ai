@@ -1,11 +1,10 @@
 from typing import Optional
 
-from langchain.chains.base import Chain
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import LLMChain
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
 
-from langup import config
+from langup import config, BrainType
 
 
 def get_simple_chat_chain(
@@ -13,7 +12,7 @@ def get_simple_chat_chain(
         openai_api_key=None,
         chat_model_kwargs: Optional[dict] = None,
         llm_chain_kwargs: Optional[dict] = None,
-) -> Chain:
+) -> BrainType:
     chat_model = ChatOpenAI(
         openai_api_key=openai_api_key or config.openai_api_key,
         openai_proxy=config.proxy, **chat_model_kwargs or {},
