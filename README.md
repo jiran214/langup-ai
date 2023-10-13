@@ -58,6 +58,18 @@ up.loop()
 ```
 </details>
 
+
+<details>
+    <summary>超简单命令端交互机器人</summary>
+<br>
+
+```python
+from langup import config, ConsoleReplyUP
+config.openai_api_key = """xxx"""
+ConsoleReplyUP().loop()  # 一行搞定
+```
+</details>
+
 更多机器人开发中...
 
 ## 架构设计

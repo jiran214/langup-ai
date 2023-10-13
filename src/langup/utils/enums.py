@@ -8,3 +8,4 @@ class LiveInputType(enum.Enum):
     gift = '礼物'
     sc = 'sc'
     scheduler = '调度任务'
+    user = 'user'

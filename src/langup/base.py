@@ -127,6 +127,7 @@ class Uploader(abc.ABC):
             self.init_config()
             _is_init_config = True
         self.brain = brain or get_simple_chat_chain(system=self.system or self.system or self.default_system)
+        self.logger = get_logging_logger(file_name=self.__class__.__name__)
 
     def init_config(self):
         """只执行一次"""
