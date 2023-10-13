@@ -4,11 +4,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 # python setup.py sdist & python setup.py bdist_wheel
-# twine upload dist/langup-0.0.5* -u__token__
+# twine upload dist/langup-0.0.7* -u__token__
 
 setuptools.setup(
     name="langup",
-    version="0.0.6",
+    version="0.0.7",
     author="ran",
     author_email="jiran214@qq.com",
     description="社交网络机器人",

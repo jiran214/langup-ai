@@ -89,7 +89,7 @@ ConsoleReplyUP().loop()  # 一行搞定
 ## 小提示
 <details>
     <summary>国内访问ChatGPT：Vercel反向代理openai api</summary>
-    <img src="https://camo.githubusercontent.com/5e471e99e8e022cf454693e38ec843036ec6301e27ee1e1fa10325b1cb720584/68747470733a2f2f76657263656c2e636f6d2f627574746f6e" alt="Vercel" data-canonical-src="https://vercel.com/button" style="max-width: 100%;">
+    <img src="https://cdn.nlark.com/yuque/0/2023/png/32547973/1697191309882-31b247a5-86d2-485c-8c2a-f62d185be1fd.png" alt="Vercel" data-canonical-src="https://vercel.com/button" style="max-width: 100%;">
     具体见 <a href="https://github.com/jiran214/proxy" target="_blank">https://github.com/jiran214/proxy</a>
 <br>
 </details>
