@@ -73,7 +73,7 @@ ConsoleReplyUP().loop()  # 一行搞定
 更多机器人开发中...
 
 ## 架构设计
-<img align="center" width="100%" height="auto" src="https://github.com/jiran214/langup-ai/blob/master/docs/jiagou.png?raw=true" >
+<img align="center" width="50%" height="auto" src="https://github.com/jiran214/langup-ai/blob/master/docs/jiagou.png?raw=true" >
 
 ## TodoList
 - Uploader
@@ -89,7 +89,8 @@ ConsoleReplyUP().loop()  # 一行搞定
 ## 小提示
 <details>
     <summary>国内访问ChatGPT：Vercel反向代理openai api</summary>
-    <img src="https://cdn.nlark.com/yuque/0/2023/png/32547973/1697191309882-31b247a5-86d2-485c-8c2a-f62d185be1fd.png" alt="Vercel" data-canonical-src="https://vercel.com/button" style="max-width: 100%;">
     具体见 <a href="https://github.com/jiran214/proxy" target="_blank">https://github.com/jiran214/proxy</a>
+    <br>
+    <img src="https://cdn.nlark.com/yuque/0/2023/png/32547973/1697191309882-31b247a5-86d2-485c-8c2a-f62d185be1fd.png" alt="Vercel" data-canonical-src="https://vercel.com/button" style="max-width: 100%;">
 <br>
 </details>
