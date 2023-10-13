@@ -27,6 +27,7 @@ class SessionAtListener(base.Listener):
 
 class LiveListener(base.Listener):
     Schema: dict = {}
+    credential = None
     room_id = None
     max_size = 20
 
@@ -34,7 +35,7 @@ class LiveListener(base.Listener):
         assert self.room_id, 'setattr LiveListener.room_id'
         super().__init__(mq_list)
         self.live_mq = base.SimpleMQ(maxsize=self.max_size)
-        self.room = api.bilibili.live.BlLiveRoom(self.room_id, self.live_mq)
+        self.room = api.bilibili.live.BlLiveRoom(self.room_id, self.live_mq, self.credential)
         t = start_thread(self.room.connect)
 
     async def _alisten(self) -> dict:

@@ -43,7 +43,7 @@ config.credential = Credential(**{
 
 # config.openai_api_key = 'xxx'  # 同下，配置一次即可
 # config.proxy = 'http://127.0.0.1:7890'  # 国内访问需要代理，也可以通过Vercel、Cloudfare反代
-# config.openai_baseurl = '...'  # 不了解的跳过
+# config.openai_api_base = '...'  # 不了解的跳过
 
 
 up = VtuBer(

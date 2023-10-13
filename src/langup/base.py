@@ -15,7 +15,7 @@ from bilibili_api import sync
 from pydantic import BaseModel
 
 from langup import config, BrainType
-from langup.brain.chains.llm import get_simple_chat_chain
+from langup.brain.chains.llm import get_chat_chain
 from langup.utils.logger import get_logging_logger
 from langup.utils.thread import Thread, start_thread
 
@@ -109,24 +109,62 @@ class Reaction(BaseModel, abc.ABC):
 
 class Uploader(abc.ABC):
     default_system = "You are a Bilibili UP"
-    system = None
     SLEEP = 1
 
     def __init__(
             self,
             listeners: List[typing.Type[Listener]],
-            brain: typing.Union[BrainType, None] = None,
             concurrent_num=1,
-            mq: MQ = SimpleMQ()
+            system: str = None,
+
+            # llm配置
+            openai_api_key: str = None,
+            openai_proxy: str = None,
+            openai_api_base: str = None,
+            temperature: int = 0.7,
+            max_tokens: int = None,
+            chat_model_kwargs: Optional[dict] = None,
+            llm_chain_kwargs: Optional[dict] = None,
+
+            brain: typing.Union[BrainType, None] = None,
+            mq: MQ = SimpleMQ(),
     ):
+        """
+        :param listeners:  感知
+        :param concurrent_num:  并发数
+        :param system:   人设
+
+        :param openai_api_key:  openai秘钥
+        :param openai_proxy:   http代理
+        :param openai_api_base:  openai endpoint
+        :param temperature:  gpt温度
+        :param max_tokens:  gpt输出长度
+        :param chat_model_kwargs:  langchain chatModel额外配置参数
+        :param llm_chain_kwargs:  langchain chatChain额外配置参数
+
+        :param brain:  含有run方法的类
+        :param mq:  通信队列
+        """
+        self.system = system
         self.listeners = listeners
         self.mq = mq
         self.concurrent_num = concurrent_num
+
         global _is_init_config
         if _is_init_config is False:
             self.init_config()
             _is_init_config = True
-        self.brain = brain or get_simple_chat_chain(system=self.system or self.system or self.default_system)
+
+        self.brain = brain or get_chat_chain(
+            system=self.system or self.system or self.default_system,
+            openai_api_key=openai_api_key,
+            openai_proxy=openai_proxy,
+            openai_api_base=openai_api_base,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            chat_model_kwargs=chat_model_kwargs,
+            llm_chain_kwargs=llm_chain_kwargs
+        )
         self.logger = get_logging_logger(file_name=self.__class__.__name__)
 
     def init_config(self):

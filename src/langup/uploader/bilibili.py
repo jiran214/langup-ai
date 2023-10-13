@@ -1,4 +1,7 @@
 import typing
+
+from bilibili_api import Credential
+
 from langup import base, config, listener, BrainType
 from langup import reaction
 from langup.brain.chains import llm
@@ -19,9 +22,8 @@ class CommentAtReplyUP(base.Uploader):
         '由@{nickname}召唤。'
     )  # answer: brain回复；nickname：发消息用户昵称
 
-    def __init__(self, system: str):
-        brain = llm.get_simple_chat_chain(system=system or self.default_system)
-        super().__init__([listener.SessionAtListener], brain=brain)
+    def __init__(self, *args, **kwargs):
+        super().__init__([listener.SessionAtListener], *args, **kwargs)
 
     def execute_sop(self, schema: listener.SessionAtListener.Schema) -> reaction.CommentReaction:
         prompt = schema.source_content
@@ -61,36 +63,44 @@ class VtuBer(base.Uploader):
     def __init__(
             self,
             room_id: int,
-            system: typing.Optional[str] = None,
-            brain: typing.Optional[BrainType] = None,
-            openai_api_key=None,
+            credential: Credential,
             is_filter=True,
-            extra_ban_words=None,
-            concurrent_num=1,
-            user_input=False
+            extra_ban_words: typing.List[str]=None,
+            user_input=False,
+            max_tokens=150,
+            *args,
+            **kwargs
     ):
         """
         bilibili直播数字人
         :param room_id:  bilibili房间号
-        :param system: 提示词/人设
-        :param brain: langchain chain
-        :param openai_api_key: api_key
         :param is_filter: 是否开启过滤
+        :param user_input: 是否开启终端输入
         :param extra_ban_words: 额外的违禁词
-        :param concurrent_num: 并发数
+
+        :param listeners:  感知
+        :param concurrent_num:  并发数
+        :param system:   人设
+
+        :param openai_api_key:  openai秘钥
+        :param openai_proxy:   http代理
+        :param openai_api_base:  openai endpoint
+        :param temperature:  gpt温度
+        :param max_tokens:  gpt输出长度
+        :param chat_model_kwargs:  langchain chatModel额外配置参数
+        :param llm_chain_kwargs:  langchain chatChain额外配置参数
+
+        :param brain:  含有run方法的类
+        :param mq:  通信队列
         """
-        assert system or brain, 'system、brain至少提供一个'
-        __brain = brain or llm.get_simple_chat_chain(
-            system=self.safe_system + system or self.default_system,
-            openai_api_key=openai_api_key,
-            chat_model_kwargs={'max_tokens': 150}
-        )
         listener.LiveListener.room_id = room_id
+        listener.LiveListener.credential = credential
         listeners = [listener.LiveListener]
         if user_input:
             listeners.append(listener.ConsoleListener)
-        self.ban_word_filter: filters.BanWordsFilter = filters.BanWordsFilter(extra_ban_words=extra_ban_words) if is_filter else None
-        super().__init__(listeners, brain=__brain, concurrent_num=concurrent_num)
+        self.ban_word_filter: filters.BanWordsFilter = filters.BanWordsFilter(extra_ban_words=extra_ban_words) \
+            if is_filter else None
+        super().__init__(listeners, max_tokens=max_tokens, *args, **kwargs)
 
     def console_2_live(self, schema):
         return {

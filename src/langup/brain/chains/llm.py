@@ -7,16 +7,23 @@ from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, H
 from langup import config, BrainType
 
 
-def get_simple_chat_chain(
+def get_chat_chain(
         system,
         openai_api_key=None,
+        openai_proxy: str = None,
+        openai_api_base: str = None,
+        temperature: int = 0.7,
+        max_tokens: int = None,
         chat_model_kwargs: Optional[dict] = None,
-        llm_chain_kwargs: Optional[dict] = None,
+        llm_chain_kwargs: Optional[dict] = None
 ) -> BrainType:
     chat_model = ChatOpenAI(
         openai_api_key=openai_api_key or config.openai_api_key,
-        openai_proxy=config.proxy, **chat_model_kwargs or {},
-        openai_api_base=config.openai_baseurl
+        openai_proxy=openai_proxy or config.proxy,
+        openai_api_base=openai_api_base or config.openai_api_base,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        **chat_model_kwargs or {},
     )
     template = system
     system_message_prompt = SystemMessagePromptTemplate.from_template(template)
