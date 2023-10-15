@@ -35,10 +35,7 @@ from langup import Credential, config, VtuBer
 # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
 config.credential = Credential(**{
     # "sessdata": '',
-    # "bili_jct": '',
-    # "buvid3": '',
-    # "dedeuserid": '',
-    # "ac_time_value": ''
+    # "bili_jct": ''
 })
 
 # config.openai_api_key = 'xxx'  # 同下，配置一次即可

@@ -1,37 +1,105 @@
 import typing
+from typing import Optional, Union, Literal
 
-from bilibili_api import Credential
+from bilibili_api import Credential, sync
 
 from langup import base, config, listener, BrainType
 from langup import reaction
+from langup.api.bilibili.video import Video
 from langup.brain.chains import llm
-from langup.utils import enums, filters
+from langup.utils import enums, filters, converts
+from langup.utils.utils import Record
 
 
-class CommentAtReplyUP(base.Uploader):
+class VideoCommentUP(base.Uploader):
     """
     监听：@消息
     思考：调用GPT回复消息
     反应：评论该消息
     """
-    default_system = "你是一个会评论视频的UP主"
+    SLEEP = 60 * 5  # 5分钟响应一次
+    default_system = "你是一个会评论视频B站观众，请总结视频并做出评论"
+    default_signals = ['总结一下']
+    prompt_temple = (
+        '视频内容如下\n'
+        '标题:{title}'
+        '{summary}'
+    )
 
-    temple = (
+    reply_temple = (
         '{answer}。'
         '本条回复由AI生成，'
         '由@{nickname}召唤。'
     )  # answer: brain回复；nickname：发消息用户昵称
 
-    def __init__(self, *args, **kwargs):
-        super().__init__([listener.SessionAtListener], *args, **kwargs)
+    def __init__(
+            self,
+            credential: Optional[Credential] = None,
+            model_name='gpt-3.5-turbo',
+            signals=None,
 
-    def execute_sop(self, schema: listener.SessionAtListener.Schema) -> reaction.CommentReaction:
-        prompt = schema.source_content
+            limit_video_seconds: Optional[int] = None,
+
+            limit_token: Union[int, str, None] = None,
+            limit_length: Optional[int] = None,
+            compress_mode: Literal['random', 'left'] = 'random',
+            *args, **kwargs
+    ):
+        self.signals = signals or self.default_signals
+        if credential:
+            config.credential = credential
+        self.limit_video_seconds = limit_video_seconds
+        assert config.credential, '请提供认证config.credential'
+        self.summary_generator = converts.SummaryGenerator(
+            limit_token=limit_token,
+            limit_length=limit_length,
+            compress_mode=compress_mode
+        )
+        self.aid_record_map = {
+            int(record_dict['listener_kwargs']['aid']): Record(**record_dict) for record_dict in self.query()
+        }
+
+        listener.SessionAtListener.credential = credential
+        chat_model_kwargs = {'model_name': model_name}
+        super().__init__([listener.SessionAtListener], chat_model_kwargs=chat_model_kwargs, *args, **kwargs)
+
+    async def execute_sop(self, schema: listener.SessionAtListener.Schema) -> Optional[reaction.CommentReaction]:
+        self.logger.info(f'step0:收到schema:{schema.source_content}')
+        if not any([
+            signal in schema.source_content for signal in self.signals
+        ]):
+            self.logger.info(f'过滤,没有出现暗号:{schema.source_content}')
+            return
+        if schema.aid in self.aid_record_map:
+            self.logger.info(f'过滤,aid:{schema.aid}已经回复过')
+            return
+
+        # 获取summary
+        video = Video(aid=schema.aid, credential=config.credential)
+        video_content_list = await converts.Audio2Text.from_bilibili_video(video)
+        view = video.info
+        self.logger.info('step1:获取summary')
+
+        # 过滤
+        self.logger.info('step2:过滤')
+        if self.limit_video_seconds and view.duration > self.limit_video_seconds:
+            self.logger.info(f'过滤,视频时长超出限制:{view.duration}')
+            return
+        if not video_content_list:
+            self.logger.error('查找字幕资源失败')
+            return
+        summary = self.summary_generator.generate(video_content_list)
+
+        # 请求GPT
+        prompt = self.prompt_temple.format(summary=summary, title=view.title)
+        self.logger.info(f'step3:请求GPT-prompt:{prompt[:10]}...{prompt[-10:]}')
         answer = self.brain.run(prompt)
-        content = self.temple.format(
+        content = self.reply_temple.format(
             answer=answer,
             nickname=schema.user_nickname
         )
+        self.aid_record_map[schema.aid] = None
+        self.logger.info('end')
         return reaction.CommentReaction(
             aid=schema.aid,
             content=content
@@ -44,6 +112,7 @@ class VtuBer(base.Uploader):
     思考：过滤、调用GPT生成文本
     反应：语音回复
     """
+    default_system = '你是一个Bilibili主播'
 
     safe_system = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
 
@@ -63,9 +132,9 @@ class VtuBer(base.Uploader):
     def __init__(
             self,
             room_id: int,
-            credential: Credential,
+            credential: Credential=None,
             is_filter=True,
-            extra_ban_words: typing.List[str]=None,
+            extra_ban_words: typing.List[str] = None,
             user_input=False,
             max_tokens=150,
             *args,
@@ -74,6 +143,7 @@ class VtuBer(base.Uploader):
         """
         bilibili直播数字人
         :param room_id:  bilibili房间号
+        :param credential:  bilibili 账号认证
         :param is_filter: 是否开启过滤
         :param user_input: 是否开启终端输入
         :param extra_ban_words: 额外的违禁词
@@ -94,7 +164,8 @@ class VtuBer(base.Uploader):
         :param mq:  通信队列
         """
         listener.LiveListener.room_id = room_id
-        listener.LiveListener.credential = credential
+        if credential:
+            config.credential = credential
         listeners = [listener.LiveListener]
         if user_input:
             listeners.append(listener.ConsoleListener)

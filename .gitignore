@@ -164,6 +164,8 @@ cython_debug/
 .idea
 *.mp3
 *.m4s
-
+voice
+logs
+audio
 
 examples

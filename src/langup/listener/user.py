@@ -28,7 +28,7 @@ class ConsoleListener(base.Listener):
     def change_config():
         """保持控制台干净"""
         from langup import config
-        if config.log['console']:
+        if config.log['console'] and 'print' in config.log['console']:
             config.log['console'].remove('print')
         config.debug = False
 

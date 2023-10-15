@@ -1,9 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# @Time    : 2023/10/13 11:01
-# @Author  : 雷雨
-# @File    : simple.py
-# @Desc    :
 from langup import base, reaction, listener
 
 

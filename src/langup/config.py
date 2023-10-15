@@ -1,3 +1,6 @@
+"""
+全局配置，基本可以作为Uploader参数传入
+"""
 import os
 from typing import Union
 

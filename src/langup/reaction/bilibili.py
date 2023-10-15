@@ -1,3 +1,5 @@
+from bilibili_api import Credential
+
 from langup import base, config
 from langup.api.bilibili import comment
 

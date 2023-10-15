@@ -18,6 +18,7 @@ def get_chat_chain(
         llm_chain_kwargs: Optional[dict] = None
 ) -> BrainType:
     chat_model = ChatOpenAI(
+        max_retries=1,
         openai_api_key=openai_api_key or config.openai_api_key,
         openai_proxy=openai_proxy or config.proxy,
         openai_api_base=openai_api_base or config.openai_api_base,
