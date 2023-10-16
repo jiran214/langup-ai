@@ -6,8 +6,7 @@ from langup.utils.thread import start_thread
 
 
 class SessionAtListener(base.Listener):
-    credential = None
-    SLEEP = 60 * 2
+    SLEEP = 60 * 5
     newest_at_time: int = 0
 
     class Schema(BaseModel):
@@ -20,7 +19,7 @@ class SessionAtListener(base.Listener):
         at_time: int
 
     async def _alisten(self):
-        sessions = await api.bilibili.session.get_at(self.credential or config.credential)
+        sessions = await api.bilibili.session.get_at(config.credential)
         items = sessions['items']
         for item in items[::-1]:
             at_type = item['item']['type']

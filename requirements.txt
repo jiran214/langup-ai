@@ -11,4 +11,3 @@ pydantic~=2.3.0
 urllib3==1.26.17
 aiofiles~=23.2.1
 setuptools~=65.5.1
-fire~=0.5.0

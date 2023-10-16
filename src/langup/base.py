@@ -78,7 +78,7 @@ class Listener(abc.ABC):
             if not schema:
                 continue
             self.notify(schema)
-            time.sleep(self.SLEEP)
+            await asyncio.sleep(self.SLEEP)
 
     def notify(self, schema):
         # pprint(schema)

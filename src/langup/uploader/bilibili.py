@@ -15,11 +15,11 @@ class VideoCommentUP(base.Uploader):
     """
     监听：@消息
     思考：调用GPT回复消息
-    反应：评论该消息
+    反应：评论视频
     """
     SLEEP = 60 * 5  # 5分钟响应一次
-    default_system = "你是一个会评论视频B站观众，请总结视频并做出评论"
-    default_signals = ['总结一下']
+    default_system = "你是一个会评论视频B站用户，请根据视频内容做出总结、评论"
+    default_signals = ['评论一下']
     prompt_temple = (
         '视频内容如下\n'
         '标题:{title}'
@@ -45,11 +45,41 @@ class VideoCommentUP(base.Uploader):
             compress_mode: Literal['random', 'left'] = 'random',
             *args, **kwargs
     ):
+        """
+        视频下at信息回复机器人
+        :param credential: bilibili认证
+        :param model_name: openai MODEL
+        :param signals:  at暗号
+        :param limit_video_seconds: 过滤视频长度
+        :param limit_token: 请求GPT token限制（可输入model name）
+        :param limit_length: 请求GPT 字符串长度限制
+        :param compress_mode: 请求GPT 压缩视频文案方式
+            - random：随机跳跃筛选
+            - left：从左到右
+
+        :param listeners:  感知
+        :param concurrent_num:  并发数
+        :param system:   人设
+
+        :param openai_api_key:  openai秘钥
+        :param openai_proxy:   http代理
+        :param openai_api_base:  openai endpoint
+        :param temperature:  gpt温度
+        :param max_tokens:  gpt输出长度
+        :param chat_model_kwargs:  langchain chatModel额外配置参数
+        :param llm_chain_kwargs:  langchain chatChain额外配置参数
+
+        :param brain:  含有run方法的类
+        :param mq:  通信队列
+        """
         self.signals = signals or self.default_signals
         if credential:
             config.credential = credential
-        self.limit_video_seconds = limit_video_seconds
+        if not (limit_token or limit_length):
+            limit_token = model_name
         assert config.credential, '请提供认证config.credential'
+
+        self.limit_video_seconds = limit_video_seconds
         self.summary_generator = converts.SummaryGenerator(
             limit_token=limit_token,
             limit_length=limit_length,
@@ -58,8 +88,6 @@ class VideoCommentUP(base.Uploader):
         self.aid_record_map = {
             int(record_dict['listener_kwargs']['aid']): Record(**record_dict) for record_dict in self.query()
         }
-
-        listener.SessionAtListener.credential = credential
         chat_model_kwargs = {'model_name': model_name}
         super().__init__([listener.SessionAtListener], chat_model_kwargs=chat_model_kwargs, *args, **kwargs)
 
@@ -132,7 +160,7 @@ class VtuBer(base.Uploader):
     def __init__(
             self,
             room_id: int,
-            credential: Credential=None,
+            credential: Optional[Credential] = None,
             is_filter=True,
             extra_ban_words: typing.List[str] = None,
             user_input=False,
@@ -142,7 +170,7 @@ class VtuBer(base.Uploader):
     ):
         """
         bilibili直播数字人
-        :param room_id:  bilibili房间号
+        :param room_id:  bilibili直播房间号
         :param credential:  bilibili 账号认证
         :param is_filter: 是否开启过滤
         :param user_input: 是否开启终端输入
@@ -166,6 +194,7 @@ class VtuBer(base.Uploader):
         listener.LiveListener.room_id = room_id
         if credential:
             config.credential = credential
+        assert config.credential, '请提供认证config.credential'
         listeners = [listener.LiveListener]
         if user_input:
             listeners.append(listener.ConsoleListener)
