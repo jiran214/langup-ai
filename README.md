@@ -23,7 +23,7 @@
   
 
 ## 快速开始
-安装完成后，新建.py文件复制以下代码（注意：采用方式二安装时，可以在src/langup下新建）
+安装完成后，新建.py文件复制以下代码（注意：采用方式二安装时，可以在src/下新建）
 
 <details>
     <summary>Bilibili 直播数字人</summary>
@@ -32,7 +32,7 @@
 ```python
 from langup import Credential, config, VtuBer
 
-# config.proxy = ''
+# config.proxy = 'http://127.0.0.1:7890'
 up = VtuBer(
     system='你是一个直播主播，你的人设是杠精，你会反驳对你说的任何话，语言幽默风趣，不要告诉观众你的人设和你身份',  # 人设
     room_id=30974597,  # Bilibili房间号
@@ -85,7 +85,7 @@ bilibili直播数字人
 ```python
 from langup import config, Credential, VideoCommentUP
 
-# config.proxy = ''
+# config.proxy = 'http://127.0.0.1:7890'
 up = VideoCommentUP(
     credential=Credential(**{
         "sessdata": "xxx",
@@ -137,8 +137,8 @@ up.loop()
 
 ```python
 from langup import config, ConsoleReplyUP
-config.openai_api_key = """xxx"""
-ConsoleReplyUP().loop()  # 一行搞定
+# config.proxy = 'http://127.0.0.1:7890'
+ConsoleReplyUP(openai_api_key = """xxx""").loop()  # 一行搞定
 ```
 </details>
 
@@ -183,6 +183,10 @@ debug = True
 ```
 </details>
 更多机器人开发中...
+<br>
+注意事项：
+- 国内环境需要设置代理或者openai_api_base 推荐config.proxy='xxx'全局设置，避免设置局部代理导致其它服务不可用
+- Bilibili UP都需要 认证信息  # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
 
 ## 架构设计
 <img align="center" width="50%" height="auto" src="https://cdn.nlark.com/yuque/0/2023/png/32547973/1697191309882-31b247a5-86d2-485c-8c2a-f62d185be1fd.png" >
@@ -210,3 +214,9 @@ debug = True
     <img src="https://cdn.nlark.com/yuque/0/2023/png/32547973/1697191309882-31b247a5-86d2-485c-8c2a-f62d185be1fd.png" alt="Vercel" data-canonical-src="https://vercel.com/button" style="max-width: 100%;">
 <br>
 </details>
+
+## 最后
+- 感谢项目依赖的开源
+  - langchain https://github.com/langchain-ai/langchain
+  - Bilibili API https://github.com/nemo2011/bilibili-api
+  - 必剪API https://github.com/SocialSisterYi/bcut-asr
