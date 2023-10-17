@@ -9,9 +9,9 @@
 ## 安装
 环境：python>=3.8
 
-- 方式一(暂时不可用)
+- 方式一
   ```shell
-  pip install langup
+  pip install langup==0.0.7
   ```
 - 方式二(建议使用python 虚拟环境)
   ```shell
