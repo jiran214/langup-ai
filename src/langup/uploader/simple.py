@@ -4,6 +4,7 @@ from langup import base, reaction, listener
 
 
 class ConsoleReplyUP(base.Uploader):
+    SLEEP = 0
     name = 'AI'
     system = '你是一位AI助手'
     temple = '{answer}。'
@@ -28,6 +29,7 @@ class ConsoleReplyUP(base.Uploader):
         """
         listeners = [listener.ConsoleListener]
         listener.ConsoleListener.console_event.set()
+        listener.ConsoleListener.clear_console()
         super().__init__(listeners=listeners, *args, **kwargs)
 
     def execute_sop(self, schema):

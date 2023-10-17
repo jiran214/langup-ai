@@ -15,7 +15,7 @@ from langup import base
 
 
 class ConsoleListener(base.Listener):
-    SLEEP = 1
+    SLEEP = 0
     console_event = threading.Event()
 
     class Schema(BaseModel):
@@ -25,12 +25,11 @@ class ConsoleListener(base.Listener):
         super().__init__(mq_list)
 
     @staticmethod
-    def change_config():
+    def clear_console():
         """保持控制台干净"""
         from langup import config
         if config.log['console'] and 'print' in config.log['console']:
             config.log['console'].remove('print')
-        config.debug = False
 
     async def _alisten(self):
         self.console_event.wait()

@@ -107,6 +107,8 @@ class Uploader(
     def __init__(
             self,
             listeners: List[typing.Type[Listener]],
+            up_sleep: Optional[int] = None,
+            listener_sleep: Optional[int] = None,
             concurrent_num=1,
             system: str = None,
 
@@ -123,9 +125,11 @@ class Uploader(
             mq: MQ = SimpleMQ(),
     ):
         """
-        :param listeners:  感知
-        :param concurrent_num:  并发数
-        :param system:   人设
+        :param listeners: 感知
+        :param concurrent_num: 并发数
+        :param up_sleep: uploader 运行间隔时间
+        :param listener_sleep: listener 运行间隔时间
+        :param system:  人设
 
         :param openai_api_key:  openai秘钥
         :param openai_proxy:   http代理
@@ -138,6 +142,8 @@ class Uploader(
         :param brain:  含有run方法的类
         :param mq:  通信队列
         """
+        self.SLEEP = up_sleep
+        self.listener_sleep = listener_sleep
         self.system = system
         self.listeners = listeners
         self.mq = mq
@@ -160,26 +166,25 @@ class Uploader(
         )
         self.logger = get_logging_logger(file_name=self.__class__.__name__)
 
+    def check(self):
+        return
+
     def init_config(self):
         """只执行一次"""
         from langup import config
         import openai
-        for listener in self.listeners:
-            if change_config := getattr(listener, 'change_config', None):
-                change_config()
-                print(f'<listener: {listener.__name__}修改配置>')
         for path in (config.tts['voice_path'], config.log['file_path'], config.convert['audio_path']):
             path = config.work_dir + path
             os.makedirs(path, exist_ok=True)
         config.tts['voice_path'] = config.work_dir + config.tts['voice_path']
         config.log['file_path'] = config.work_dir + config.log['file_path']
         config.convert['audio_path'] = config.work_dir + config.convert['audio_path']
-
         if config.proxy:
             os.environ['HTTPS_PORXY'] = config.proxy
             os.environ['HTTP_PORXY'] = config.proxy
             openai.proxy = config.proxy
             bilibili_api.settings.proxy = config.proxy
+        self.check()
 
     @abc.abstractmethod
     def execute_sop(self, schema) -> typing.Union[Reaction, List[Reaction]]:
@@ -218,12 +223,13 @@ class Uploader(
             await asyncio.sleep(self.SLEEP)
 
     def loop(self, block=True):
+        for listener in self.listeners:
+            listener.SLEEP = self.listener_sleep
         threads = Thread(
             listeners=self.listeners,
             uploader=self,
             concurrent_num=self.concurrent_num
         )
-        print('启动！')
         if block:
             [t.join() for t in threads]
         return threads

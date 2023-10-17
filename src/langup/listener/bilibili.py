@@ -6,7 +6,7 @@ from langup.utils.thread import start_thread
 
 
 class SessionAtListener(base.Listener):
-    SLEEP = 60 * 5
+    SLEEP = 60 * 2
     newest_at_time: int = 0
 
     class Schema(BaseModel):

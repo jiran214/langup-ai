@@ -17,9 +17,8 @@ class VideoCommentUP(base.Uploader):
     思考：调用GPT回复消息
     反应：评论视频
     """
-    SLEEP = 60 * 5  # 5分钟响应一次
     default_system = "你是一个会评论视频B站用户，请根据视频内容做出总结、评论"
-    default_signals = ['评论一下']
+    default_signals = ['总结一下']
     prompt_temple = (
         '视频内容如下\n'
         '标题:{title}'
@@ -27,7 +26,7 @@ class VideoCommentUP(base.Uploader):
     )
 
     reply_temple = (
-        '{answer}。'
+        '{answer}'
         '本条回复由AI生成，'
         '由@{nickname}召唤。'
     )  # answer: brain回复；nickname：发消息用户昵称
@@ -37,7 +36,6 @@ class VideoCommentUP(base.Uploader):
             credential: Optional[Credential] = None,
             model_name='gpt-3.5-turbo',
             signals=None,
-
             limit_video_seconds: Optional[int] = None,
 
             limit_token: Union[int, str, None] = None,
@@ -50,6 +48,7 @@ class VideoCommentUP(base.Uploader):
         :param credential: bilibili认证
         :param model_name: openai MODEL
         :param signals:  at暗号
+
         :param limit_video_seconds: 过滤视频长度
         :param limit_token: 请求GPT token限制（可输入model name）
         :param limit_length: 请求GPT 字符串长度限制
@@ -59,6 +58,8 @@ class VideoCommentUP(base.Uploader):
 
         :param listeners:  感知
         :param concurrent_num:  并发数
+        :param up_sleep: uploader 多少时间触发一次
+        :param listener_sleep: listener 多长时间触发一次
         :param system:   人设
 
         :param openai_api_key:  openai秘钥
@@ -121,7 +122,7 @@ class VideoCommentUP(base.Uploader):
         # 请求GPT
         prompt = self.prompt_temple.format(summary=summary, title=view.title)
         self.logger.info(f'step3:请求GPT-prompt:{prompt[:10]}...{prompt[-10:]}')
-        answer = self.brain.run(prompt)
+        answer = await self.brain.arun(prompt)
         content = self.reply_temple.format(
             answer=answer,
             nickname=schema.user_nickname
@@ -178,6 +179,8 @@ class VtuBer(base.Uploader):
 
         :param listeners:  感知
         :param concurrent_num:  并发数
+        :param up_sleep: uploader 运行间隔时间
+        :param listener_sleep: listener 运行间隔时间
         :param system:   人设
 
         :param openai_api_key:  openai秘钥
@@ -214,6 +217,7 @@ class VtuBer(base.Uploader):
     ) -> typing.Union[None, reaction.TTSSpeakReaction]:
         if isinstance(schema, listener.ConsoleListener.Schema):
             schema = self.console_2_live(schema)
+        self.logger.info(f"收到消息，准备回复:{schema.get('text') or str(schema)}")
         audio_kwargs = {**schema}
         audio_temple = self.audio_temple[schema['type']]
         if schema['type'] is not enums.LiveInputType.gift:
@@ -221,10 +225,15 @@ class VtuBer(base.Uploader):
             if self.ban_word_filter and (words := self.ban_word_filter.match(prompt)):
                 self.logger.warning(f'包含违禁词-{prompt}-{words}')
                 return
-            audio_kwargs['answer'] = self.brain.run(prompt)
+            try:
+                audio_kwargs['answer'] = self.brain.run(prompt)
+            except Exception as e:
+                self.logger.error('请求GPT异常')
+                raise e
         audio_txt = audio_temple.format(
             **audio_kwargs
         )
+        self.logger.info(f'生成回复：{audio_txt}')
         if self.ban_word_filter and (words := self.ban_word_filter.match(audio_txt)):
             self.logger.warning(f'包含违禁词-{audio_txt}-{words}')
             return

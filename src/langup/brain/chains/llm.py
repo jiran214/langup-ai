@@ -18,7 +18,8 @@ def get_chat_chain(
         llm_chain_kwargs: Optional[dict] = None
 ) -> BrainType:
     chat_model = ChatOpenAI(
-        max_retries=1,
+        max_retries=2,
+        request_timeout=60,
         openai_api_key=openai_api_key or config.openai_api_key,
         openai_proxy=openai_proxy or config.proxy,
         openai_api_base=openai_api_base or config.openai_api_base,
@@ -31,5 +32,9 @@ def get_chat_chain(
     human_template = "{text}"
     human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
     chat_prompt = ChatPromptTemplate.from_messages([system_message_prompt, human_message_prompt])
-    chain = LLMChain(llm=chat_model, prompt=chat_prompt, **llm_chain_kwargs or {})
+    chain = LLMChain(
+        llm=chat_model,
+        prompt=chat_prompt,
+        **llm_chain_kwargs or {}
+    )
     return chain
