@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+import asyncio
+import os
 from typing import Optional, List
 
 import httpx
@@ -16,6 +18,8 @@ class Video(video.Video):
     __bn_info = None
 
     async def download_audio(self, file_path):
+        if os.path.exists(file_path + 'm4s.mp3'):
+            return file_path + 'm4s.mp3'
         # 获取视频下载链接
         download_url_data = await self.get_download_url(0)
         # 解析视频下载信息
@@ -73,3 +77,10 @@ class Video(video.Video):
             return r.json()['body']
         # 普通字幕(好像没了)
         return subtitles[0]['subtitle_url']
+
+
+if __name__ == '__main__':
+    # config.proxy = '1'
+    v = Video(bvid='BV1dN4y1y74T')
+    asyncio.run(v.get_info())
+    print(v.info)

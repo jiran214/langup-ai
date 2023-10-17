@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 
+import httpx
 from bilibili_api import live
 
 from langup import base, config
@@ -54,11 +55,11 @@ def event_wrap(func, mq):
 
 
 class BlLiveRoom:
-    def __init__(self, room_id, mq: base.MQ):
+    def __init__(self, room_id, mq: base.MQ, credential=None):
         self.room = live.LiveDanmaku(
             room_display_id=int(room_id),
             # debug=config.debug,
-            credential=config.credential
+            credential=credential or config.credential
         )
         self.mq = mq
         self.add_event_listeners()
@@ -75,4 +76,7 @@ class BlLiveRoom:
     def connect(self):
         asyncio.set_event_loop(asyncio.new_event_loop())
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(self.room.connect())
+        try:
+            loop.run_until_complete(self.room.connect())
+        except httpx.ConnectError:
+            raise httpx.ConnectError('如果你开启代理遇到此异常，请导入并设置config.proxy = <your proxy>尝试解决该问题！')

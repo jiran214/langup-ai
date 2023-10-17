@@ -1,7 +1,7 @@
 edge_tts==6.1.8
 bilibili-api-python==16.1.0
 openai==0.28.0
-langchain~=0.0.286
+langchain==0.0.286
 ratelimit==2.2.1
 pygame~=2.5.1
 scipy==1.7.3
@@ -11,3 +11,4 @@ pydantic~=2.3.0
 urllib3==1.26.17
 aiofiles~=23.2.1
 setuptools~=65.5.1
+tiktoken~=0.5.1

@@ -11,12 +11,12 @@ def get_logging_logger(file_name):
     logger.setLevel(level=logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
 
-    if config.debug:
+    if 'print' in config.log['console']:
         stream_handler = logging.StreamHandler()
         stream_handler.setLevel(level=logging.DEBUG)
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
-    else:
+    if 'file' in config.log['console']:
         filename = os.path.join(os.path.dirname(config.log['file_path']), f'{file_name}.log')
         file_handler = logging.FileHandler(filename)
         # file_handler = handlers.TimedRotatingFileHandler(filename=f'{file_name}.log', when='D')
