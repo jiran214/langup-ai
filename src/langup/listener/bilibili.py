@@ -47,7 +47,7 @@ class SessionAtListener(base.Listener):
 
 
 class LiveListener(base.Listener):
-    Schema: dict = {}
+    Schema: dict = {}  # text type ...
     room_id = None
     max_size = 20
 

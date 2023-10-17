@@ -100,10 +100,3 @@ class Record(BaseModel):
     react_kwargs: Optional[dict] = None
     time_cost: Optional[str] = None
     created_time: Optional[str] = None
-
-    def save_file(self, path):
-        with open(path, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(self.model_dump(), indent=4)+'\n')
-
-    def print(self):
-        pprint(self.model_dump(exclude_none=True, exclude_defaults=True))

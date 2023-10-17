@@ -5,6 +5,7 @@ import asyncio
 import json
 import os
 import queue
+import threading
 import time
 import typing
 from asyncio import iscoroutine
@@ -13,6 +14,7 @@ from pprint import pprint
 from typing import List, Optional, Callable
 
 import bilibili_api.settings
+import openai
 from bilibili_api import sync
 from pydantic import BaseModel
 
@@ -21,8 +23,6 @@ from langup.brain.chains.llm import get_chat_chain
 from langup.utils import mixins
 from langup.utils.logger import get_logging_logger
 from langup.utils.thread import Thread, start_thread
-
-_is_init_config = False
 
 
 class MQ(abc.ABC):
@@ -99,7 +99,8 @@ class Reaction(BaseModel, abc.ABC):
 class Uploader(
     abc.ABC,
     mixins.ConfigImport,
-    mixins.Logger
+    mixins.Logger,
+    mixins.InitMixin
 ):
     default_system = "You are a Bilibili UP"
     SLEEP = 1
@@ -149,10 +150,7 @@ class Uploader(
         self.mq = mq
         self.concurrent_num = concurrent_num
 
-        global _is_init_config
-        if _is_init_config is False:
-            self.init_config()
-            _is_init_config = True
+        self.init_config(locals())
 
         self.brain = brain or get_chat_chain(
             system=self.system or self.system or self.default_system,
@@ -165,26 +163,6 @@ class Uploader(
             llm_chain_kwargs=llm_chain_kwargs
         )
         self.logger = get_logging_logger(file_name=self.__class__.__name__)
-
-    def check(self):
-        return
-
-    def init_config(self):
-        """只执行一次"""
-        from langup import config
-        import openai
-        for path in (config.tts['voice_path'], config.log['file_path'], config.convert['audio_path']):
-            path = config.work_dir + path
-            os.makedirs(path, exist_ok=True)
-        config.tts['voice_path'] = config.work_dir + config.tts['voice_path']
-        config.log['file_path'] = config.work_dir + config.log['file_path']
-        config.convert['audio_path'] = config.work_dir + config.convert['audio_path']
-        if config.proxy:
-            os.environ['HTTPS_PORXY'] = config.proxy
-            os.environ['HTTP_PORXY'] = config.proxy
-            openai.proxy = config.proxy
-            bilibili_api.settings.proxy = config.proxy
-        self.check()
 
     @abc.abstractmethod
     def execute_sop(self, schema) -> typing.Union[Reaction, List[Reaction]]:
@@ -207,14 +185,13 @@ class Uploader(
             react_kwargs = {}
             task_list = []
             for reaction in reaction_instance_list:
-                if config.log['console']:
-                    react_kwargs.update(reaction.model_dump())
+                react_kwargs.update(reaction.model_dump())
                 if reaction.block is True:
                     task_list.append(asyncio.create_task(reaction.areact()))
                 else:
                     start_thread(lambda: sync(reaction.areact()))
             await asyncio.gather(*task_list)
-            if config.log['console']:
+            if config.log['handlers']:
                 self.record(
                     listener_kwargs=schema.model_dump() if isinstance(schema, BaseModel) else schema,
                     time_cost=str(time.time()-t0).split('.')[0],
