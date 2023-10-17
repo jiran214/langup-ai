@@ -9,9 +9,9 @@
 ## 安装
 环境：python>=3.8
 
-- 方式一(暂时不可用)
+- 方式一
   ```shell
-  pip install langup
+  pip install langup==0.0.8
   ```
 - 方式二(建议使用python 虚拟环境)
   ```shell
@@ -190,6 +190,7 @@ debug = True
 - Bilibili UP都需要 认证信息  # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
 
 ## 架构设计
+部分模块待实现
 <img align="center" width="50%" height="auto" src="https://cdn.nlark.com/yuque/0/2023/png/32547973/1697191309882-31b247a5-86d2-485c-8c2a-f62d185be1fd.png" >
 
 ## TodoList

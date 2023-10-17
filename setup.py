@@ -4,11 +4,11 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 # python setup.py sdist & python setup.py bdist_wheel
-# twine upload dist/langup-0.0.7* -u__token__
+# twine upload dist/langup-0.0.8* -u__token__
 
 setuptools.setup(
     name="langup",
-    version="0.0.7",
+    version="0.0.8",
     author="ran",
     author_email="jiran214@qq.com",
     description="社交网络机器人",
@@ -27,7 +27,7 @@ setuptools.setup(
         'edge_tts==6.1.8',
         'bilibili-api-python==16.1.0',
         'openai==0.28.0',
-        'langchain~=0.0.286',
+        'langchain==0.0.286',
         'ratelimit==2.2.1',
         'pygame~=2.5.1',
         'scipy==1.7.3',
@@ -36,6 +36,7 @@ setuptools.setup(
         'pydantic~=2.3.0',
         'urllib3==1.26.17',
         'aiofiles~=23.2.1',
-        'setuptools~=65.5.1'
+        'setuptools~=65.5.1',
+        'tiktoken~=0.5.1'
     ]
 )
