@@ -144,6 +144,7 @@ Uploader 所有公共参数：
 """
 ```
 
+全局配置文件：
 ```python
 """
 langup/config.py
@@ -182,6 +183,7 @@ debug = True
 </details>
 更多机器人开发中...
 <br>
+
 注意：
 - api_key可自动从环境变量获取
 - 国内环境需要设置代理或者openai_api_base 推荐config.proxy='xxx'全局设置，避免设置局部代理导致其它服务不可用
