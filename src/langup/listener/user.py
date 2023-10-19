@@ -28,8 +28,8 @@ class ConsoleListener(base.Listener):
     def clear_console():
         """保持控制台干净"""
         from langup import config
-        if config.log['console'] and 'print' in config.log['console']:
-            config.log['console'].remove('print')
+        if config.log['handlers'] and 'console' in config.log['console']:
+            config.log['handlers'].remove('console')
 
     async def _alisten(self):
         self.console_event.wait()

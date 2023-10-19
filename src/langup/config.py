@@ -18,7 +18,7 @@ tts = {
 }
 
 log = {
-    "console": ["print"],  # print打印生成信息, file文件存储生成信息
+    "handlers": ["console"],  # console打印日志到控制台, file文件存储
     "file_path": "logs/"
 }
 
@@ -31,3 +31,6 @@ openai_api_key = None  # sk-...
 openai_api_base = None  # https://{your_domain}/v1
 proxy = None  # 代理
 debug = True
+
+test_net = True
+welcome_tip = True
