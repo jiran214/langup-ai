@@ -33,7 +33,7 @@ class VideoCommentUP(base.Uploader):
 
     def __init__(
             self,
-            credential: Optional[Credential] = None,
+            credential: Optional[dict] = None,
             model_name='gpt-3.5-turbo',
             signals=None,
             limit_video_seconds: Optional[int] = None,
@@ -75,10 +75,10 @@ class VideoCommentUP(base.Uploader):
         """
         self.signals = signals or self.default_signals
         if credential:
-            config.credential = credential
+            config.credential = Credential(**credential)
+        assert config.credential, '请提供认证config.credential'
         if not (limit_token or limit_length):
             limit_token = model_name
-        assert config.credential, '请提供认证config.credential'
 
         self.limit_video_seconds = limit_video_seconds
         self.summary_generator = converts.SummaryGenerator(
@@ -161,7 +161,7 @@ class VtuBer(base.Uploader):
     def __init__(
             self,
             room_id: int,
-            credential: Optional[Credential] = None,
+            credential: Optional[dict] = None,
             is_filter=True,
             extra_ban_words: typing.List[str] = None,
             user_input=False,
@@ -196,7 +196,7 @@ class VtuBer(base.Uploader):
         """
         listener.LiveListener.room_id = room_id
         if credential:
-            config.credential = credential
+            config.credential = Credential(**credential)
         assert config.credential, '请提供认证config.credential'
         listeners = [listener.LiveListener]
         if user_input:

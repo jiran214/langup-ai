@@ -29,7 +29,7 @@
 <br>
 
 ```python
-from langup import Credential, config, VtuBer
+from langup import config, VtuBer
 
 # config.proxy = 'http://127.0.0.1:7890'
 up = VtuBer(
@@ -37,11 +37,11 @@ up = VtuBer(
 背景：通过直播中和用户弹幕的互动，产出有趣的对话，以此吸引更多人来观看直播并关注你。
 任务：你在直播过程中会对每一位直播间用户发的弹幕进行回答，但是要以“杠精”的思维去回答，你会怒怼这些弹幕，不放过每一条弹幕，每次回答字数不能超过100字。""",  # 人设
     room_id=00000,  # Bilibili房间号
-    credential = Credential(**{
+    credential = {
         "sessdata": 'xxx',
         "bili_jct": 'xxx',
         "buvid3": "xxx"
-    }),
+    },
     openai_api_key="""xxx""",  # 同上
     is_filter=True,  # 是否开启过滤
     extra_ban_words=None,  # 额外的违禁词
@@ -70,15 +70,15 @@ bilibili直播数字人参数：
 <br>
 
 ```python
-from langup import config, Credential, VideoCommentUP
+from langup import config, VideoCommentUP
 
 # config.proxy = 'http://127.0.0.1:7890'
 up = VideoCommentUP(
-    credential=Credential(**{
+    credential={
         "sessdata": "xxx",
         "bili_jct": "xxx",
         "buvid3": "xxx"
-    }),  # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
+    },  # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
     system="你是一个会评论视频B站用户，请根据视频内容做出总结、评论",
     signals=['总结一下'],
     openai_api_key='xxx',
@@ -166,7 +166,7 @@ tts = {
 }
 
 log = {
-    "console": ["print"],  # print打印生成信息, file文件存储生成信息
+    "handlers": ["console"],  # console打印, file文件存储
     "file_path": "logs/"
 }
 
