@@ -1,18 +1,23 @@
+import asyncio
 import functools
 import json
 import os
 import threading
+import time
+from asyncio import iscoroutine
 from datetime import datetime
 
 import bilibili_api
 import openai
 from bilibili_api import Credential
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 from langup import config
 from langup.utils import consts
 from langup.utils.logger import get_logging_logger
-from langup.utils.utils import Record, format_print
+from langup.utils.thread import start_thread, sync
+from langup.utils.utils import Record, format_print, get_list
 
 _is_init_config = False
 
@@ -44,14 +49,14 @@ class InitMixin:
         )
         return response
 
-    def init_config(self,init_kwargs):
+    def init_config(self):
         with self.__init_lock:
             global _is_init_config
             if _is_init_config is False:
-                self.__init_config(init_kwargs)
+                self.__init_config()
                 _is_init_config = True
 
-    def __init_config(self, init_kwargs):
+    def __init_config(self: 'base.Uploader'):
         """只执行一次"""
         from langup import config
         self.logger = get_logging_logger(file_name=self.__class__.__name__)
@@ -78,10 +83,10 @@ class InitMixin:
             os.environ['HTTPS_PORXY'] = config.proxy
             os.environ['HTTP_PORXY'] = config.proxy
             bilibili_api.settings.proxy = config.proxy
-        if proxy := (config.proxy or init_kwargs.get('openai_proxy')):
+        if proxy := (config.proxy or self.openai_proxy):
             openai.proxy = proxy
         # key 配置
-        config.openai_api_key = config.openai_api_key or init_kwargs.get('openai_api_key') or openai.api_key or os.environ.get('OPENAI_API_KEY')
+        config.openai_api_key = config.openai_api_key or self.openai_api_key or openai.api_key or os.environ.get('OPENAI_API_KEY')
         openai.api_key = config.openai_api_key
         self.check()
         if config.welcome_tip:
@@ -118,3 +123,58 @@ class Logger:
                 return data_list
             except Exception as e:
                 raise Exception(f'Record文件:{self.record_path}序列化失败,请确认是否手动修修改过\n{e}')
+
+
+class Looper:
+
+    async def wait(self: 'base.Uploader'):
+        while 1:
+            schema = self.mq.recv()
+            t0 = time.time()
+            if not isinstance(schema, list):
+                schema_list = [schema]
+            else:
+                schema_list = schema
+            for schema in schema_list:
+                self.logger.debug('execute_sop')
+                res = self.execute_sop(schema)
+                reactions = await res if iscoroutine(res) else res
+                # execute_sop 返回空代表过滤
+                if reactions is None:
+                    continue
+                await self.handle_reaction(t0, schema, reactions)
+
+    async def handle_reaction(self: 'base.Uploader', t0, schema, reactions):
+        reaction_instance_list = get_list(reactions)
+        react_kwargs = {}
+        task_list = []
+        for reaction in reaction_instance_list:
+            react_kwargs.update(reaction.model_dump())
+            if reaction.block is True:
+                task_list.append(asyncio.create_task(reaction.areact()))
+            else:
+                start_thread(reaction.areact)
+        self.logger.debug('run task_list')
+        await asyncio.gather(*task_list)
+        if config.log['handlers']:
+            self.record(
+                listener_kwargs=schema.model_dump() if isinstance(schema, BaseModel) else schema,
+                time_cost=str(time.time() - t0).split('.')[0],
+                react_kwargs=react_kwargs
+            )
+        self.logger.debug('callback')
+        self.callback()
+        await asyncio.sleep(self.up_sleep)
+
+    def loop(self: 'base.Uploader', block=True):
+        self.init()
+        threads = []
+        for listener in self.listeners:
+            listener.init(mq=self.mq, listener_sleep=self.listener_sleep)
+            threads.append(start_thread(listener.alisten))
+
+        for _ in range(self.concurrent_num):
+            threads.append(start_thread(self.wait))
+        if block:
+            [t.join() for t in threads]
+        return threads

@@ -1,6 +1,5 @@
 from typing import Union, Callable
 
-from langup.utils.consts import DEFAULT
 
 try:
     from langchain.chains.base import Chain
@@ -21,8 +20,6 @@ __all__ = [
     'config',
     'BrainType',
     'base',
-
-    'DEFAULT',
 
     'VideoCommentUP',
     'UserInputReplyUP',

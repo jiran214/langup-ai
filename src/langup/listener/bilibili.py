@@ -1,22 +1,27 @@
+from typing import Optional, Type
+
 from pydantic import BaseModel
 
 from langup import api, base, config
+from langup.base import MQ
 from langup.utils import vid_transform
 from langup.utils.thread import start_thread
 
 
-class SessionAtListener(base.Listener):
-    SLEEP = 60 * 2
-    newest_at_time: int = 0
+class SessionSchema(BaseModel):
+    user_nickname: str
+    source_content: str
+    uri: str
+    source_id: int
+    bvid: str
+    aid: int
+    at_time: int
 
-    class Schema(BaseModel):
-        user_nickname: str
-        source_content: str
-        uri: str
-        source_id: int
-        bvid: str
-        aid: int
-        at_time: int
+
+class SessionAtListener(base.Listener):
+    listener_sleep: int = 60 * 2
+    newest_at_time: int = 0
+    Schema: Type[SessionSchema] = SessionSchema
 
     async def _alisten(self):
         sessions = await api.bilibili.session.get_at(config.credential)
@@ -49,16 +54,16 @@ class SessionAtListener(base.Listener):
 
 
 class LiveListener(base.Listener):
+    room_id: int
+    max_size: int = 20
     Schema: dict = {}  # text type ...
-    room_id = None
-    max_size = 20
+    live_mq: Optional[MQ] = None
 
-    def __init__(self, mq_list):
-        assert self.room_id, 'setattr LiveListener.room_id'
-        super().__init__(mq_list)
+    def init(self, mq, listener_sleep=None):
         self.live_mq = base.SimpleMQ(maxsize=self.max_size)
-        self.room = api.bilibili.live.BlLiveRoom(self.room_id, self.live_mq, config.credential)
-        t = start_thread(self.room.connect)
+        room = api.bilibili.live.BlLiveRoom(self.room_id, self.live_mq, config.credential)
+        t = start_thread(room.connect)
+        super().init(mq, listener_sleep)
 
     async def _alisten(self) -> dict:
         return self.live_mq.recv()

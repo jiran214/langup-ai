@@ -6,31 +6,34 @@
 # @Desc    :
 import abc
 import threading
-from pydantic import BaseModel
+from typing import Type
+
+from pydantic import BaseModel, Field
 from langup import base, config
 
 from speech_recognition import UnknownValueError
 
-from langup.reaction.voice import audio_lock
 from langup.utils import utils
 from langup.utils.converts import Audio2Text, Speech2Audio
 
 
-class UserInputListener(base.Listener, abc.ABC):
-    console_event = threading.Event()
-    SLEEP = 0
+class UserSchema(BaseModel):
+    user_input: str
 
-    class Schema(BaseModel):
-        user_input: str
+
+class UserInputListener(base.Listener, abc.ABC):
+    user_event: threading.Event = Field(default_factory=threading.Event)
+    listener_sleep: int = 0
+    Schema: Type[UserSchema] = UserSchema
 
     @abc.abstractmethod
     def get_input(self): ...
 
     async def _alisten(self):
-        self.console_event.wait()
+        self.user_event.wait()
         user_input = self.get_input()
         schema = self.Schema(user_input=user_input)
-        self.console_event.clear()
+        self.user_event.clear()
         return schema
 
     @staticmethod
@@ -48,12 +51,10 @@ class ConsoleListener(UserInputListener):
 
 
 class SpeechListener(UserInputListener):
-    def __init__(self, mq_list):
-        self.convert = Speech2Audio()
-        super().__init__(mq_list)
+    convert: Speech2Audio = Field(default_factory=Speech2Audio)
 
     def get_input(self):
-        self.console_event.wait()
+        self.user_event.wait()
         while 1:
             utils.format_print('录音中...', end='')
             # 进行识别
@@ -64,7 +65,7 @@ class SpeechListener(UserInputListener):
                 text = ' '.join(res)
                 print('\nYou: ', end='')
                 utils.format_print(f'{text}', color='green')
-                self.console_event.clear()
+                self.user_event.clear()
                 return text
             except UnknownValueError:
                 utils.format_print('未识别到音频')

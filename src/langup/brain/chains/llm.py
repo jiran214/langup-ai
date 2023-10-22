@@ -3,6 +3,7 @@ from typing import Optional
 from langchain.chat_models import ChatOpenAI
 from langchain.chains import LLMChain
 from langchain.prompts import ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate
+from langchain.schema.language_model import BaseLanguageModel
 
 from langup import config, BrainType
 
@@ -34,6 +35,20 @@ def get_chat_chain(
     chat_prompt = ChatPromptTemplate.from_messages([system_message_prompt, human_message_prompt])
     chain = LLMChain(
         llm=chat_model,
+        prompt=chat_prompt,
+        **llm_chain_kwargs or {}
+    )
+    return chain
+
+
+def get_llm_chain(system, llm: BaseLanguageModel, llm_chain_kwargs=None):
+    template = system
+    system_message_prompt = SystemMessagePromptTemplate.from_template(template)
+    human_template = "{text}"
+    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+    chat_prompt = ChatPromptTemplate.from_messages([system_message_prompt, human_message_prompt])
+    chain = LLMChain(
+        llm=llm,
         prompt=chat_prompt,
         **llm_chain_kwargs or {}
     )

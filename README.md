@@ -46,7 +46,7 @@ up = VtuBer(
     },
     openai_api_key="""xxx""",  # 同上
     is_filter=True,  # 是否开启过滤
-    extra_ban_words=None,  # 额外的违禁词
+    extra_ban_words=[],  # 额外的违禁词
     concurrent_num=2  # 控制回复弹幕速度
 )
 up.loop()
@@ -116,14 +116,14 @@ up.loop()
 <br>
 
 ```python
-from langup import UserInputReplyUP, config, DEFAULT
+from langup import UserInputReplyUP, config
 
 config.proxy = 'http://127.0.0.1:7890'
 # config.openai_api_key = 'xxx' or 创建.env文件 OPENAI_API_KEY=xxx
 
 # 语音实时识别回复
 # 修改语音识别模块配置 config.convert['speech_rec']
-UserInputReplyUP(system=DEFAULT, listen='speech').loop() 
+UserInputReplyUP(system='你是一位AI助手', listen='speech').loop() 
 ```
 </details>
 
@@ -236,6 +236,7 @@ debug = True
 - Reaction
 - 其它
   - 日志记录
+  - pydantic model 
 
 ## 提示
 <details>
