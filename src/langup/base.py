@@ -47,7 +47,7 @@ class SimpleMQ(queue.Queue, MQ):
 
 class Listener(abc.ABC):
     """监听api 通知绑定消息队列"""
-    SLEEP = 0
+    SLEEP = 1
     Schema = None
 
     def __init__(
@@ -136,7 +136,7 @@ class Uploader(
         :param brain:  含有run方法的类
         :param mq:  通信队列
         """
-        self.SLEEP = up_sleep or 0
+        self.SLEEP = up_sleep or self.SLEEP
         self.listener_sleep = None
         self.system = None if system and system.lower() == 'default' else system
         self.listeners = listeners
