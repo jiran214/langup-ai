@@ -13,25 +13,26 @@ import requests
 from .orm import (ResourceCompleteRspSchema, ResourceCreateRspSchema,
                   ResultRspSchema, ResultStateEnum, TaskCreateRspSchema)
 
-
 urllib3.disable_warnings()
 
 __version__ = '0.0.2'
 
-API_REQ_UPLOAD    = 'https://member.bilibili.com/x/bcut/rubick-interface/resource/create' # 申请上传
-API_COMMIT_UPLOAD = 'https://member.bilibili.com/x/bcut/rubick-interface/resource/create/complete' # 提交上传
-API_CREATE_TASK   = 'https://member.bilibili.com/x/bcut/rubick-interface/task' # 创建任务
-API_QUERY_RESULT  = 'https://member.bilibili.com/x/bcut/rubick-interface/task/result' # 查询结果
+API_REQ_UPLOAD = 'https://member.bilibili.com/x/bcut/rubick-interface/resource/create'  # 申请上传
+API_COMMIT_UPLOAD = 'https://member.bilibili.com/x/bcut/rubick-interface/resource/create/complete'  # 提交上传
+API_CREATE_TASK = 'https://member.bilibili.com/x/bcut/rubick-interface/task'  # 创建任务
+API_QUERY_RESULT = 'https://member.bilibili.com/x/bcut/rubick-interface/task/result'  # 查询结果
 
 SUPPORT_SOUND_FORMAT = Literal['flac', 'aac', 'm4a', 'mp3', 'wav']
 
 
 class APIError(Exception):
     '接口调用错误'
+
     def __init__(self, code, msg) -> None:
         self.code = code
         self.msg = msg
         super().__init__()
+
     def __str__(self) -> str:
         return f'{self.code}:{self.msg}'
 
@@ -51,7 +52,7 @@ class BcutASR:
     __etags: List[str]
     __download_url: str
     task_id: str
-    
+
     def __init__(self, file: Optional[Union[str, PathLike]] = None) -> None:
         self.session = requests.Session()
         # 取消验证证书
@@ -61,7 +62,7 @@ class BcutASR:
         self.__etags = []
         if file:
             self.set_data(file)
-    
+
     def set_data(self,
                  file: Optional[Union[str, PathLike]] = None,
                  raw_data: Optional[bytes] = None,
@@ -87,7 +88,7 @@ class BcutASR:
             raise TypeError('format is not support')
         self.sound_fmt = suffix
         # logging.info(f'加载文件成功: {self.sound_name}')
-    
+
     def upload(self) -> None:
         '申请上传'
         if not self.sound_bin or not self.sound_fmt:
@@ -114,7 +115,7 @@ class BcutASR:
         # logging.info(f'申请上传成功, 总计大小{resp_data.size // 1024}KB, {self.__clips}分片, 分片大小{resp_data.per_size // 1024}KB: {self.__in_boss_key}')
         self.__upload_part()
         self.__commit_upload()
-        
+
     def __upload_part(self) -> None:
         '上传音频数据'
         for clip in range(self.__clips):
@@ -122,13 +123,13 @@ class BcutASR:
             end_range = (clip + 1) * self.__per_size
             # logging.info(f'开始上传分片{clip}: {start_range}-{end_range}')
             resp = self.session.put(self.__upload_urls[clip],
-                data=self.sound_bin[start_range:end_range],
-            )
+                                    data=self.sound_bin[start_range:end_range],
+                                    )
             resp.raise_for_status()
             etag = resp.headers.get('Etag')
             self.__etags.append(etag)
             # logging.info(f'分片{clip}上传成功: {etag}')
-    
+
     def __commit_upload(self) -> None:
         '提交上传数据'
         resp = self.session.post(API_COMMIT_UPLOAD, data={
@@ -146,7 +147,7 @@ class BcutASR:
         resp_data = ResourceCompleteRspSchema.parse_obj(resp['data'])
         self.__download_url = resp_data.download_url
         # logging.info(f'提交成功')
-    
+
     def create_task(self) -> str:
         '开始创建转换任务'
         resp = self.session.post(API_CREATE_TASK, json={
@@ -162,7 +163,7 @@ class BcutASR:
         self.task_id = resp_data.task_id
         # logging.info(f'任务已创建: {self.task_id}')
         return self.task_id
-    
+
     def result(self, task_id: Optional[str] = None) -> ResultRspSchema:
         '查询转换结果'
         resp = self.session.get(API_QUERY_RESULT, params={
@@ -177,8 +178,11 @@ class BcutASR:
         return ResultRspSchema.parse_obj(resp['data'])
 
 
-def get_audio_text_by_bcut(file_path):
-    asr = BcutASR(file_path)
+def get_audio_text_by_bcut(file_path=None, raw_data=None, data_fmt=None):
+    assert file_path or (raw_data and data_fmt), '至少提供一个参数'
+
+    asr = BcutASR(file=file_path)
+    if raw_data: asr.set_data(raw_data=raw_data, data_fmt=data_fmt)
     asr.upload()  # 上传文件
     asr.create_task()  # 创建任务
 

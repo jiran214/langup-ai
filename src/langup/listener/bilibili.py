@@ -21,6 +21,7 @@ class SessionAtListener(base.Listener):
     async def _alisten(self):
         sessions = await api.bilibili.session.get_at(config.credential)
         items = sessions['items']
+        schema_list = []
         for item in items[::-1]:
             at_type = item['item']['type']
             if at_type != 'reply':
@@ -35,7 +36,7 @@ class SessionAtListener(base.Listener):
             bvid = "BV" + uri.split("BV")[1]
             aid = vid_transform.note_query_2_aid(uri)
             self.newest_at_time = at_time
-            return self.Schema(
+            schema_list.append(self.Schema(
                 user_nickname=user_nickname,
                 source_content=source_content,
                 uri=uri,
@@ -43,7 +44,8 @@ class SessionAtListener(base.Listener):
                 bvid=bvid,
                 aid=aid,
                 at_time=at_time,
-            )
+            ))
+        return schema_list
 
 
 class LiveListener(base.Listener):

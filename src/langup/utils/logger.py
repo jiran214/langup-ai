@@ -10,10 +10,9 @@ def get_logging_logger(file_name):
     logger = logging.getLogger(file_name)
     logger.setLevel(level=logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
-
     if 'console' in config.log['handlers']:
         stream_handler = logging.StreamHandler()
-        stream_handler.setLevel(level=logging.DEBUG)
+        stream_handler.setLevel(level=logging.DEBUG if config.debug else logging.INFO)
         stream_handler.setFormatter(formatter)
         logger.addHandler(stream_handler)
     if 'file' in config.log['handlers']:

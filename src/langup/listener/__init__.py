@@ -5,7 +5,7 @@
 # @File    : __init__.py.py
 # @Desc    :
 from langup.listener.bilibili import SessionAtListener, LiveListener
-from langup.listener.user import ConsoleListener
+from langup.listener.user import ConsoleListener, SpeechListener
 
 
 __all__ = [

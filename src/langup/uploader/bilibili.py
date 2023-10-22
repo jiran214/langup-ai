@@ -1,5 +1,4 @@
-import typing
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, List
 
 from bilibili_api import Credential, sync
 
@@ -35,8 +34,8 @@ class VideoCommentUP(base.Uploader):
             self,
             credential: Optional[dict] = None,
             model_name='gpt-3.5-turbo',
-            signals=None,
-            limit_video_seconds: Optional[int] = None,
+            signals: Optional[List[str]] = None,
+            limit_video_seconds: Optional[int] = 60 * 60 * 1,
 
             limit_token: Union[int, str, None] = None,
             limit_length: Optional[int] = None,
@@ -47,7 +46,7 @@ class VideoCommentUP(base.Uploader):
         视频下at信息回复机器人
         :param credential: bilibili认证
         :param model_name: openai MODEL
-        :param signals:  at暗号
+        :param signals:  at的暗号
 
         :param limit_video_seconds: 过滤视频长度
         :param limit_token: 请求GPT token限制（可输入model name）
@@ -73,9 +72,14 @@ class VideoCommentUP(base.Uploader):
         :param brain:  含有run方法的类
         :param mq:  通信队列
         """
+        config.log['handlers'].append('file')
+        chat_model_kwargs = {'model_name': model_name}
+        super().__init__([listener.SessionAtListener], chat_model_kwargs=chat_model_kwargs, *args, **kwargs)
+
         self.signals = signals or self.default_signals
-        if credential:
-            config.credential = Credential(**credential)
+        # auth覆盖
+        for item in (credential or {}).items():
+            setattr(config.credential, *item)
         assert config.credential, '请提供认证config.credential'
         if not (limit_token or limit_length):
             limit_token = model_name
@@ -89,8 +93,6 @@ class VideoCommentUP(base.Uploader):
         self.aid_record_map = {
             int(record_dict['listener_kwargs']['aid']): Record(**record_dict) for record_dict in self.query()
         }
-        chat_model_kwargs = {'model_name': model_name}
-        super().__init__([listener.SessionAtListener], chat_model_kwargs=chat_model_kwargs, *args, **kwargs)
 
     async def execute_sop(self, schema: listener.SessionAtListener.Schema) -> Optional[reaction.CommentReaction]:
         self.logger.info(f'step0:收到schema:{schema.source_content}')
@@ -163,7 +165,7 @@ class VtuBer(base.Uploader):
             room_id: int,
             credential: Optional[dict] = None,
             is_filter=True,
-            extra_ban_words: typing.List[str] = None,
+            extra_ban_words: List[str] = None,
             user_input=False,
             max_tokens=150,
             *args,
@@ -195,12 +197,14 @@ class VtuBer(base.Uploader):
         :param mq:  通信队列
         """
         listener.LiveListener.room_id = room_id
-        if credential:
-            config.credential = Credential(**credential)
+        # auth覆盖
+        for item in (credential or {}).items():
+            setattr(config.credential, *item)
         assert config.credential, '请提供认证config.credential'
         listeners = [listener.LiveListener]
         if user_input:
             listeners.append(listener.ConsoleListener)
+        # 过滤
         self.ban_word_filter: filters.BanWordsFilter = filters.BanWordsFilter(extra_ban_words=extra_ban_words) \
             if is_filter else None
         super().__init__(listeners, max_tokens=max_tokens, *args, **kwargs)
@@ -213,8 +217,8 @@ class VtuBer(base.Uploader):
 
     def execute_sop(
             self,
-            schema: typing.Union[dict, listener.ConsoleListener.Schema]
-    ) -> typing.Union[None, reaction.TTSSpeakReaction]:
+            schema: Union[dict, listener.ConsoleListener.Schema]
+    ) -> Union[None, reaction.TTSSpeakReaction]:
         if isinstance(schema, listener.ConsoleListener.Schema):
             schema = self.console_2_live(schema)
         self.logger.info(f"收到消息，准备回复:{schema.get('text') or str(schema)}")

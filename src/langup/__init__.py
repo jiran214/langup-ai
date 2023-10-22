@@ -1,5 +1,6 @@
 from typing import Union, Callable
 
+from langup.utils.consts import DEFAULT
 
 try:
     from langchain.chains.base import Chain
@@ -11,20 +12,20 @@ except:
 
 
 from langup import config
-from langup.uploader.simple import ConsoleReplyUP
+from langup.uploader.simple import UserInputReplyUP
 from langup.uploader.bilibili import VtuBer, VideoCommentUP
 from bilibili_api import Credential
-from langup.utils.converts import Audio2Text
 
 __all__ = [
     'Credential',
     'config',
-    'Audio2Text',
     'BrainType',
     'base',
 
+    'DEFAULT',
+
     'VideoCommentUP',
-    'ConsoleReplyUP',
+    'UserInputReplyUP',
     'VtuBer',
 ]
 

@@ -11,7 +11,7 @@
 
 - 方式一
   ```shell
-  pip install langup==0.0.8
+  pip install langup==0.0.9
   ```
 - 方式二(建议使用python 虚拟环境)
   ```shell
@@ -23,7 +23,9 @@
   
 
 ## 快速开始
-安装完成后，新建.py文件复制以下代码（注意：采用方式二安装时，可以在src/下新建）
+- 安装完成后，新建.py文件参考以下代码（注意：采用方式二安装时，可以在src/下新建）
+- api_key和cookie等信息建议写到.env文件中，程序会隐式读取，参考src/.env.temple
+
 <details>
     <summary>Bilibili 直播数字人</summary>
 <br>
@@ -74,6 +76,8 @@ from langup import config, VideoCommentUP
 
 # config.proxy = 'http://127.0.0.1:7890'
 up = VideoCommentUP(
+    up_sleep=10,  # 生成回复间隔事件
+    listener_sleep=60 * 2,  # 2分钟获取一次@消息
     credential={
         "sessdata": "xxx",
         "bili_jct": "xxx",
@@ -108,13 +112,33 @@ up.loop()
 </details>
 
 <details>
-    <summary>超简单命令端交互机器人</summary>
+    <summary>实时语音交互助手</summary>
 <br>
 
 ```python
-from langup import config, ConsoleReplyUP
+from langup import UserInputReplyUP, config, DEFAULT
+
+config.proxy = 'http://127.0.0.1:7890'
+# config.openai_api_key = 'xxx' or 创建.env文件 OPENAI_API_KEY=xxx
+
+# 语音实时识别回复
+# 修改语音识别模块配置 config.convert['speech_rec']
+UserInputReplyUP(system=DEFAULT, listen='speech').loop() 
+```
+</details>
+
+<details>
+    <summary>终端交互助手</summary>
+<br>
+
+```python
+from langup import UserInputReplyUP, config, DEFAULT
+
 # config.proxy = 'http://127.0.0.1:7890'
-ConsoleReplyUP(openai_api_key = """xxx""").loop()  # 一行搞定
+# config.openai_api_key = 'xxx' or 创建.env文件 OPENAI_API_KEY=xxx
+
+# 终端回复
+# UserInputReplyUP(system=DEFAULT, listen='console').loop()
 ```
 </details>
 
@@ -201,9 +225,14 @@ debug = True
     - [X] 并发
   - VideoCommentUP
     - [X] 基本功能
-  - ConsoleReplyUP
+  - UserInputUP
     - [X] 基本功能
+    - [X] 语音识别
 - Listener
+  - [X] 语音识别
+  - [ ] 微信
+  - [ ] Bilibili 私信
+  - [ ] QQ
 - Reaction
 - 其它
   - 日志记录
@@ -225,3 +254,4 @@ debug = True
   - 必剪API https://github.com/SocialSisterYi/bcut-asr
 - 禁止滥用本库，使用本库请遵守各平台安全规范，可通过提示词、过滤输入等方式
 - 示例代码仅供参考，尤其是提示词编写没有必要一样
+- 代码可能异常，对于改进和报错问题可以在写在issues

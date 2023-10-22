@@ -2,26 +2,19 @@
 # -*- coding: utf-8 -*-
 import abc
 import asyncio
-import json
-import os
 import queue
-import threading
+
 import time
 import typing
 from asyncio import iscoroutine
-from datetime import datetime
-from pprint import pprint
 from typing import List, Optional, Callable
 
-import bilibili_api.settings
-import openai
 from bilibili_api import sync
 from pydantic import BaseModel
 
 from langup import config, BrainType
 from langup.brain.chains.llm import get_chat_chain
 from langup.utils import mixins
-from langup.utils.logger import get_logging_logger
 from langup.utils.thread import Thread, start_thread
 
 
@@ -33,7 +26,7 @@ class MQ(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def recv(self) -> BaseModel:
+    def recv(self) -> typing.Union[BaseModel, dict]:
         ...
 
     @abc.abstractmethod
@@ -143,9 +136,9 @@ class Uploader(
         :param brain:  含有run方法的类
         :param mq:  通信队列
         """
-        self.SLEEP = up_sleep
-        self.listener_sleep = listener_sleep
-        self.system = system
+        self.SLEEP = up_sleep or 0
+        self.listener_sleep = None
+        self.system = None if system and system.lower() == 'default' else system
         self.listeners = listeners
         self.mq = mq
         self.concurrent_num = concurrent_num
@@ -162,46 +155,53 @@ class Uploader(
             chat_model_kwargs=chat_model_kwargs,
             llm_chain_kwargs=llm_chain_kwargs
         )
-        self.logger = get_logging_logger(file_name=self.__class__.__name__)
 
     @abc.abstractmethod
-    def execute_sop(self, schema) -> typing.Union[Reaction, List[Reaction]]:
-        ...
+    def execute_sop(self, schema) -> typing.Union[Reaction, List[Reaction]]: ...
 
     async def wait(self):
         while 1:
             schema = self.mq.recv()
             t0 = time.time()
-            res = self.execute_sop(schema)
-            if iscoroutine(res):
-                reaction_instance_list = await res
+            if not isinstance(schema, list):
+                schema_list = [schema]
             else:
-                reaction_instance_list = res
-            # execute_sop 返回空代表过滤
-            if not reaction_instance_list:
-                continue
-            if not isinstance(reaction_instance_list, list):
-                reaction_instance_list = [reaction_instance_list]
-            react_kwargs = {}
-            task_list = []
-            for reaction in reaction_instance_list:
-                react_kwargs.update(reaction.model_dump())
-                if reaction.block is True:
-                    task_list.append(asyncio.create_task(reaction.areact()))
+                schema_list = schema
+            for schema in schema_list:
+                self.logger.debug('execute_sop')
+                res = self.execute_sop(schema)
+                if iscoroutine(res):
+                    reaction_instance_list = await res
                 else:
-                    start_thread(lambda: sync(reaction.areact()))
-            await asyncio.gather(*task_list)
-            if config.log['handlers']:
-                self.record(
-                    listener_kwargs=schema.model_dump() if isinstance(schema, BaseModel) else schema,
-                    time_cost=str(time.time()-t0).split('.')[0],
-                    react_kwargs=react_kwargs
-                )
-            await asyncio.sleep(self.SLEEP)
+                    reaction_instance_list = res
+                # execute_sop 返回空代表过滤
+                if not reaction_instance_list:
+                    continue
+                if not isinstance(reaction_instance_list, list):
+                    reaction_instance_list = [reaction_instance_list]
+                react_kwargs = {}
+                task_list = []
+                for reaction in reaction_instance_list:
+                    react_kwargs.update(reaction.model_dump())
+                    if reaction.block is True:
+                        task_list.append(asyncio.create_task(reaction.areact()))
+                    else:
+                        start_thread(lambda: sync(reaction.areact()))
+                self.logger.debug('run task_list')
+                await asyncio.gather(*task_list)
+                if config.log['handlers']:
+                    self.record(
+                        listener_kwargs=schema.model_dump() if isinstance(schema, BaseModel) else schema,
+                        time_cost=str(time.time() - t0).split('.')[0],
+                        react_kwargs=react_kwargs
+                    )
+                self.logger.debug('callback')
+                self.callback()
+                await asyncio.sleep(self.SLEEP)
 
     def loop(self, block=True):
         for listener in self.listeners:
-            listener.SLEEP = self.listener_sleep
+            if self.listener_sleep: listener.SLEEP = self.listener_sleep
         threads = Thread(
             listeners=self.listeners,
             uploader=self,
@@ -210,3 +210,6 @@ class Uploader(
         if block:
             [t.join() for t in threads]
         return threads
+
+    def callback(self):
+        pass
