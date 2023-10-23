@@ -1,5 +1,6 @@
-from typing import Optional, Type
+from typing import Optional, Type, List
 
+from bilibili_api.session import Event
 from pydantic import BaseModel
 
 from langup import api, base, config
@@ -68,3 +69,20 @@ class LiveListener(base.Listener):
     async def _alisten(self) -> dict:
         return self.live_mq.recv()
 
+
+class ChatListener(base.Listener):
+    Schema: Type[Event] = Event
+    listener_sleep: int = 6
+    max_size: Optional[int] = 0
+    session_mq: Optional[MQ] = None
+    event_name_list: List[str]
+
+    def init(self, mq: MQ, listener_sleep: Optional[int] = 0):
+        self.session_mq = base.SimpleMQ(maxsize=self.max_size)
+        s = api.bilibili.session.ChatSession(credential=config.credential, mq=self.session_mq)
+        s.register_handlers(self.event_name_list)
+        t = start_thread(s.connect)
+        super().init(mq, listener_sleep)
+
+    async def _alisten(self):
+        return self.session_mq.recv()

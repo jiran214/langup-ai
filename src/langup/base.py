@@ -42,6 +42,7 @@ class SimpleMQ(queue.Queue, MQ):
         return self.get()
 
     def send(self, schema):
+        # 设置maxsize淘汰旧消息
         if self.maxsize != 0 and self.qsize() == self.maxsize:
             self.get()
         self.put(schema)

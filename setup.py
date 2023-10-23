@@ -1,4 +1,5 @@
 import setuptools  # 导入setuptools打包工具
+from langup import __version__
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -9,7 +10,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="langup",
-    version="0.0.9",
+    version=__version__,
     author="ran",
     author_email="jiran214@qq.com",
     description="社交网络机器人",
