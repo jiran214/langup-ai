@@ -2,27 +2,22 @@
 # -*- coding: utf-8 -*-
 import abc
 import asyncio
-import json
-import os
 import queue
-import threading
-import time
-import typing
-from asyncio import iscoroutine
-from datetime import datetime
-from pprint import pprint
-from typing import List, Optional, Callable
 
-import bilibili_api.settings
-import openai
+import time
+from asyncio import iscoroutine
+from logging import Logger
+from typing import List, Optional, Callable, Union, Any
+
 from bilibili_api import sync
-from pydantic import BaseModel
+from langchain.chat_models import ChatOpenAI
+from pydantic import BaseModel, Field, ConfigDict
 
 from langup import config, BrainType
-from langup.brain.chains.llm import get_chat_chain
+from langup.brain.chains.llm import get_llm_chain
 from langup.utils import mixins
-from langup.utils.logger import get_logging_logger
-from langup.utils.thread import Thread, start_thread
+from langup.utils.thread import start_thread
+from langup.utils.utils import get_list
 
 
 class MQ(abc.ABC):
@@ -33,7 +28,7 @@ class MQ(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def recv(self) -> BaseModel:
+    def recv(self) -> Union[BaseModel, dict]:
         ...
 
     @abc.abstractmethod
@@ -43,7 +38,7 @@ class MQ(abc.ABC):
 
 class SimpleMQ(queue.Queue, MQ):
 
-    def recv(self) -> typing.Union[BaseModel, dict]:
+    def recv(self) -> Union[BaseModel, dict]:
         return self.get()
 
     def send(self, schema):
@@ -52,18 +47,16 @@ class SimpleMQ(queue.Queue, MQ):
         self.put(schema)
 
 
-class Listener(abc.ABC):
+class Listener(BaseModel, abc.ABC):
     """监听api 通知绑定消息队列"""
-    SLEEP = 0
-    Schema = None
+    listener_sleep: int = 5
+    Schema: Any = None
+    mq_list: List[MQ] = []
+    middlewares: Optional[List[Callable]] = []
 
-    def __init__(
-            self,
-            mq_list: List[MQ],
-            middlewares: Optional[List[Callable]] = None
-    ):
-        self.mq_list = mq_list
-        self.middlewares = middlewares or []
+    def init(self, mq: MQ, listener_sleep: Optional[int] = None):
+        if listener_sleep is not None: self.listener_sleep = listener_sleep
+        self.mq_list.append(mq)
 
     @abc.abstractmethod
     async def _alisten(self):
@@ -78,13 +71,16 @@ class Listener(abc.ABC):
             if not schema:
                 continue
             self.notify(schema)
-            await asyncio.sleep(self.SLEEP)
+            await asyncio.sleep(self.listener_sleep)
 
     def notify(self, schema):
         # pprint(schema)
         # 通知所有uploader
         for mq in self.mq_list:
             mq.send(schema)
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class Reaction(BaseModel, abc.ABC):
@@ -98,115 +94,83 @@ class Reaction(BaseModel, abc.ABC):
 
 class Uploader(
     abc.ABC,
+    BaseModel,
     mixins.ConfigImport,
     mixins.Logger,
-    mixins.InitMixin
+    mixins.InitMixin,
+    mixins.Looper
 ):
-    default_system = "You are a Bilibili UP"
-    SLEEP = 1
+    """
+    :param listeners: 感知
+    :param concurrent_num: 并发数
+    :param up_sleep: uploader 运行间隔时间
+    :param listener_sleep: listener 运行间隔时间
+    :param system:  人设
 
-    def __init__(
-            self,
-            listeners: List[typing.Type[Listener]],
-            up_sleep: Optional[int] = None,
-            listener_sleep: Optional[int] = None,
-            concurrent_num=1,
-            system: str = None,
+    :param model_name:  gpt model
+    :param openai_api_key:  openai秘钥
+    :param openai_proxy:   http代理
+    :param openai_api_base:  openai endpoint
+    :param temperature:  gpt温度
+    :param max_tokens:  gpt输出长度
+    :param chat_model_kwargs:  langchain chatModel额外配置参数
+    :param llm_chain_kwargs:  langchain chatChain额外配置参数
 
-            # llm配置
-            openai_api_key: str = None,
-            openai_proxy: str = None,
-            openai_api_base: str = None,
-            temperature: int = 0.7,
-            max_tokens: int = None,
-            chat_model_kwargs: Optional[dict] = None,
-            llm_chain_kwargs: Optional[dict] = None,
+    :param brain:  含有run方法的类
+    :param mq:  通信队列
+    """
+    up_sleep: int = 1  # 运行间隔时间
+    system: str = Field(default="You are a Bilibili UP")  # 人设
+    concurrent_num: int = 1   # 并发数
+    listener_sleep: Optional[int] = None  # 运行间隔时间
 
-            brain: typing.Union[BrainType, None] = None,
-            mq: MQ = SimpleMQ(),
-    ):
-        """
-        :param listeners: 感知
-        :param concurrent_num: 并发数
-        :param up_sleep: uploader 运行间隔时间
-        :param listener_sleep: listener 运行间隔时间
-        :param system:  人设
+    # llm配置
+    model_name: str = Field(default="gpt-3.5-turbo", alias="model_name")
+    openai_api_key: Optional[str] = None  # openai秘钥
+    openai_proxy: Optional[str] = None  # http代理
+    openai_api_base: Optional[str] = None  # openai endpoint
+    temperature: Optional[float] = 0.7  # gpt温度
+    max_tokens: Optional[int] = None  # gpt输出长度
+    chat_model_kwargs: Optional[dict] = {}  # langchain chatModel额外配置参数
+    llm_chain_kwargs: Optional[dict] = None  # langchain chatChain额外配置参数
 
-        :param openai_api_key:  openai秘钥
-        :param openai_proxy:   http代理
-        :param openai_api_base:  openai endpoint
-        :param temperature:  gpt温度
-        :param max_tokens:  gpt输出长度
-        :param chat_model_kwargs:  langchain chatModel额外配置参数
-        :param llm_chain_kwargs:  langchain chatChain额外配置参数
+    mq: MQ = Field(default_factory=SimpleMQ)
+    logger: Optional[Logger] = None
+    listeners: List[Listener] = []
+    brain: Union[BrainType, None] = None
 
-        :param brain:  含有run方法的类
-        :param mq:  通信队列
-        """
-        self.SLEEP = up_sleep
-        self.listener_sleep = listener_sleep
-        self.system = system
-        self.listeners = listeners
-        self.mq = mq
-        self.concurrent_num = concurrent_num
+    def init(self):
+        self.init_config()
+        chain = self.get_brain()
+        self.brain = chain
+        self.listener_sleep = None
+        self.listeners = self.get_listeners()
+        self.prepare()
 
-        self.init_config(locals())
-
-        self.brain = brain or get_chat_chain(
-            system=self.system or self.system or self.default_system,
-            openai_api_key=openai_api_key,
-            openai_proxy=openai_proxy,
-            openai_api_base=openai_api_base,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            chat_model_kwargs=chat_model_kwargs,
-            llm_chain_kwargs=llm_chain_kwargs
+    def get_brain(self):
+        self.chat_model_kwargs.update(self.model_dump(include={'model_name', 'openai_api_key', 'openai_proxy', 'openai_api_base', 'temperature', 'max_tokens'}))
+        self.chat_model_kwargs['openai_api_key'] = self.chat_model_kwargs['openai_api_key'] or config.openai_api_key
+        chain = get_llm_chain(
+            system=self.system,
+            llm=ChatOpenAI(
+                max_retries=2,
+                request_timeout=60,
+                **self.chat_model_kwargs or {},
+            ),
+            llm_chain_kwargs=self.llm_chain_kwargs
         )
-        self.logger = get_logging_logger(file_name=self.__class__.__name__)
+        return chain
 
     @abc.abstractmethod
-    def execute_sop(self, schema) -> typing.Union[Reaction, List[Reaction]]:
-        ...
+    def prepare(self): ...
+    @abc.abstractmethod
+    def get_listeners(self): ...
+    @abc.abstractmethod
+    def execute_sop(self, schema) -> Union[Reaction, List[Reaction]]: ...
 
-    async def wait(self):
-        while 1:
-            schema = self.mq.recv()
-            t0 = time.time()
-            res = self.execute_sop(schema)
-            if iscoroutine(res):
-                reaction_instance_list = await res
-            else:
-                reaction_instance_list = res
-            # execute_sop 返回空代表过滤
-            if not reaction_instance_list:
-                continue
-            if not isinstance(reaction_instance_list, list):
-                reaction_instance_list = [reaction_instance_list]
-            react_kwargs = {}
-            task_list = []
-            for reaction in reaction_instance_list:
-                react_kwargs.update(reaction.model_dump())
-                if reaction.block is True:
-                    task_list.append(asyncio.create_task(reaction.areact()))
-                else:
-                    start_thread(lambda: sync(reaction.areact()))
-            await asyncio.gather(*task_list)
-            if config.log['handlers']:
-                self.record(
-                    listener_kwargs=schema.model_dump() if isinstance(schema, BaseModel) else schema,
-                    time_cost=str(time.time()-t0).split('.')[0],
-                    react_kwargs=react_kwargs
-                )
-            await asyncio.sleep(self.SLEEP)
+    def callback(self):
+        pass
 
-    def loop(self, block=True):
-        for listener in self.listeners:
-            listener.SLEEP = self.listener_sleep
-        threads = Thread(
-            listeners=self.listeners,
-            uploader=self,
-            concurrent_num=self.concurrent_num
-        )
-        if block:
-            [t.join() for t in threads]
-        return threads
+    class Config:
+        arbitrary_types_allowed = True
+        protected_namespaces = ()

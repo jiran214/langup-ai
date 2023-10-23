@@ -11,7 +11,7 @@
 
 - 方式一
   ```shell
-  pip install langup==0.0.8
+  pip install langup==0.0.9
   ```
 - 方式二(建议使用python 虚拟环境)
   ```shell
@@ -23,13 +23,15 @@
   
 
 ## 快速开始
-安装完成后，新建.py文件复制以下代码（注意：采用方式二安装时，可以在src/下新建）
+- 安装完成后，新建.py文件参考以下代码（注意：采用方式二安装时，可以在src/下新建）
+- api_key和cookie等信息建议写到.env文件中，程序会隐式读取，参考src/.env.temple
+
 <details>
     <summary>Bilibili 直播数字人</summary>
 <br>
 
 ```python
-from langup import Credential, config, VtuBer
+from langup import config, VtuBer
 
 # config.proxy = 'http://127.0.0.1:7890'
 up = VtuBer(
@@ -37,14 +39,14 @@ up = VtuBer(
 背景：通过直播中和用户弹幕的互动，产出有趣的对话，以此吸引更多人来观看直播并关注你。
 任务：你在直播过程中会对每一位直播间用户发的弹幕进行回答，但是要以“杠精”的思维去回答，你会怒怼这些弹幕，不放过每一条弹幕，每次回答字数不能超过100字。""",  # 人设
     room_id=00000,  # Bilibili房间号
-    credential = Credential(**{
+    credential = {
         "sessdata": 'xxx',
         "bili_jct": 'xxx',
         "buvid3": "xxx"
-    }),
+    },
     openai_api_key="""xxx""",  # 同上
     is_filter=True,  # 是否开启过滤
-    extra_ban_words=None,  # 额外的违禁词
+    extra_ban_words=[],  # 额外的违禁词
     concurrent_num=2  # 控制回复弹幕速度
 )
 up.loop()
@@ -70,15 +72,17 @@ bilibili直播数字人参数：
 <br>
 
 ```python
-from langup import config, Credential, VideoCommentUP
+from langup import config, VideoCommentUP
 
 # config.proxy = 'http://127.0.0.1:7890'
 up = VideoCommentUP(
-    credential=Credential(**{
+    up_sleep=10,  # 生成回复间隔事件
+    listener_sleep=60 * 2,  # 2分钟获取一次@消息
+    credential={
         "sessdata": "xxx",
         "bili_jct": "xxx",
         "buvid3": "xxx"
-    }),  # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
+    },  # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
     system="你是一个会评论视频B站用户，请根据视频内容做出总结、评论",
     signals=['总结一下'],
     openai_api_key='xxx',
@@ -108,13 +112,33 @@ up.loop()
 </details>
 
 <details>
-    <summary>超简单命令端交互机器人</summary>
+    <summary>实时语音交互助手</summary>
 <br>
 
 ```python
-from langup import config, ConsoleReplyUP
+from langup import UserInputReplyUP, config
+
+config.proxy = 'http://127.0.0.1:7890'
+# config.openai_api_key = 'xxx' or 创建.env文件 OPENAI_API_KEY=xxx
+
+# 语音实时识别回复
+# 修改语音识别模块配置 config.convert['speech_rec']
+UserInputReplyUP(system='你是一位AI助手', listen='speech').loop() 
+```
+</details>
+
+<details>
+    <summary>终端交互助手</summary>
+<br>
+
+```python
+from langup import UserInputReplyUP, config
+
 # config.proxy = 'http://127.0.0.1:7890'
-ConsoleReplyUP(openai_api_key = """xxx""").loop()  # 一行搞定
+# config.openai_api_key = 'xxx' or 创建.env文件 OPENAI_API_KEY=xxx
+
+# 终端回复
+UserInputReplyUP(system='你是一位AI助手', listen='console').loop()
 ```
 </details>
 
@@ -166,7 +190,7 @@ tts = {
 }
 
 log = {
-    "console": ["print"],  # print打印生成信息, file文件存储生成信息
+    "handlers": ["console"],  # console打印, file文件存储
     "file_path": "logs/"
 }
 
@@ -201,12 +225,18 @@ debug = True
     - [X] 并发
   - VideoCommentUP
     - [X] 基本功能
-  - ConsoleReplyUP
+  - UserInputUP
     - [X] 基本功能
+    - [X] 语音识别
 - Listener
+  - [X] 语音识别
+  - [ ] 微信
+  - [ ] Bilibili 私信
+  - [ ] QQ
 - Reaction
 - 其它
   - 日志记录
+  - pydantic model 
 
 ## 提示
 <details>
@@ -225,3 +255,4 @@ debug = True
   - 必剪API https://github.com/SocialSisterYi/bcut-asr
 - 禁止滥用本库，使用本库请遵守各平台安全规范，可通过提示词、过滤输入等方式
 - 示例代码仅供参考，尤其是提示词编写没有必要一样
+- 代码可能异常，对于改进和报错问题可以在写在issues

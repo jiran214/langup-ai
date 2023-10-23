@@ -4,36 +4,68 @@
 # @Author  : 雷雨
 # @File    : user.py
 # @Desc    :
-import asyncio
+import abc
 import threading
-import time
-from threading import Lock
+from typing import Type
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from langup import base, config
 
-from langup import base
+from speech_recognition import UnknownValueError
+
+from langup.utils import utils
+from langup.utils.converts import Audio2Text, Speech2Audio
 
 
-class ConsoleListener(base.Listener):
-    SLEEP = 0
-    console_event = threading.Event()
+class UserSchema(BaseModel):
+    user_input: str
 
-    class Schema(BaseModel):
-        user_input: str
 
-    def __init__(self, mq_list):
-        super().__init__(mq_list)
+class UserInputListener(base.Listener, abc.ABC):
+    user_event: threading.Event = Field(default_factory=threading.Event)
+    listener_sleep: int = 0
+    Schema: Type[UserSchema] = UserSchema
+
+    @abc.abstractmethod
+    def get_input(self): ...
+
+    async def _alisten(self):
+        self.user_event.wait()
+        user_input = self.get_input()
+        schema = self.Schema(user_input=user_input)
+        self.user_event.clear()
+        return schema
 
     @staticmethod
     def clear_console():
-        """保持控制台干净"""
         from langup import config
-        if config.log['handlers'] and 'console' in config.log['console']:
-            config.log['handlers'].remove('console')
+        """保持控制台干净"""
+        if config.log['handlers'] and ('console' in config.log['handlers']):
+            config.log['handlers'] = ['file']
 
-    async def _alisten(self):
-        self.console_event.wait()
-        user_input = str(input('You: '))
-        schema = self.Schema(user_input=user_input)
-        self.console_event.clear()
-        return schema
+
+class ConsoleListener(UserInputListener):
+
+    def get_input(self):
+        return str(input('You: '))
+
+
+class SpeechListener(UserInputListener):
+    convert: Speech2Audio = Field(default_factory=Speech2Audio)
+
+    def get_input(self):
+        self.user_event.wait()
+        while 1:
+            utils.format_print('录音中...', end='')
+            # 进行识别
+            audio = self.convert.listen()
+            utils.format_print('录音结束，识别中...', end='')
+            try:
+                res = Audio2Text.from_raw_data(raw_data=audio.get_wav_data(), data_fmt='wav')
+                text = ' '.join(res)
+                print('\nYou: ', end='')
+                utils.format_print(f'{text}', color='green')
+                self.user_event.clear()
+                return text
+            except UnknownValueError:
+                utils.format_print('未识别到音频')

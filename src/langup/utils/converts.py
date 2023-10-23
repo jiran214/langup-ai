@@ -6,11 +6,15 @@ from typing import Optional, Literal
 from typing import Union
 
 import tiktoken
+from speech_recognition import UnknownValueError
 
 from langup import config
 from langup.api.bcut_asr import get_audio_text_by_bcut
 from langup.api.bilibili.video import Video
 from langup.utils import consts
+
+#  pip install SpeechRecognition
+import speech_recognition as sr
 
 
 class Audio2Text:
@@ -31,6 +35,33 @@ class Audio2Text:
     @classmethod
     def from_file_path(cls, path):
         return get_audio_text_by_bcut(path)
+
+    @classmethod
+    def from_raw_data(cls, raw_data, data_fmt):
+        res = get_audio_text_by_bcut(raw_data=raw_data, data_fmt=data_fmt)
+        if not res:
+            raise UnknownValueError
+        return res
+
+
+class Speech2Audio:
+    cfg = config.convert['speech_rec'].copy()
+
+    def __init__(self):
+
+        """ 语音监听 """
+        self.adjust_for_ambient_noise = self.cfg.pop('adjust_for_ambient_noise')
+        self.r = sr.Recognizer()
+        for param_item in (self.cfg or {}).items():
+            setattr(self.r, *param_item)
+        self.r.dynamic_energy_ratio = 2
+        self.mic = sr.Microphone()
+
+    def listen(self):
+        with self.mic as source:
+            if self.adjust_for_ambient_noise: self.r.adjust_for_ambient_noise(source)
+            audio = self.r.listen(source)
+        return audio
 
 
 class SummaryGenerator:

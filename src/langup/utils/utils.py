@@ -11,6 +11,24 @@ from typing import Optional, Any
 
 from pydantic import BaseModel
 
+color_map = {
+    "black": "30",
+    "red": "31",
+    "green": "32",
+    "yellow": "33",
+    "blue": "34",
+    "magenta": "35",
+    "cyan": "36",
+    "white": "39"
+}
+
+style_map = {
+    "normal": "0",
+    "bold": "1",
+    "underline": "4",
+    "reverse": "7"
+}
+
 
 def singleton(cls):
     _instance = {}
@@ -100,3 +118,18 @@ class Record(BaseModel):
     react_kwargs: Optional[dict] = None
     time_cost: Optional[str] = None
     created_time: Optional[str] = None
+
+
+def format_print(text: str, color: str = 'white', style: str = 'normal', end='\n'):
+
+    color_code = color_map.get(color, "39")
+    style_code = style_map.get(style, "0")
+
+    print(f"\033[{style_code};{color_code}m{text}\033[0m", end=end)
+
+
+def get_list(item):
+    if isinstance(item, list):
+        return item
+    else:
+        return [item]

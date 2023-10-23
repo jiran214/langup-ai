@@ -1,7 +1,7 @@
-import typing
-from typing import Optional, Union, Literal
+from typing import Optional, Union, Literal, List, Any
 
 from bilibili_api import Credential, sync
+from pydantic import Field, ConfigDict
 
 from langup import base, config, listener, BrainType
 from langup import reaction
@@ -13,86 +13,86 @@ from langup.utils.utils import Record
 
 class VideoCommentUP(base.Uploader):
     """
+    视频下at信息回复机器人
     监听：@消息
     思考：调用GPT回复消息
     反应：评论视频
+
+    :param credential: bilibili认证
+    :param model_name: openai MODEL
+    :param signals:  at的暗号
+
+    :param limit_video_seconds: 过滤视频长度
+    :param limit_token: 请求GPT token限制（可输入model name）
+    :param limit_length: 请求GPT 字符串长度限制
+    :param compress_mode: 请求GPT 压缩视频文案方式
+        - random：随机跳跃筛选
+        - left：从左到右
+
+    :param listeners:  感知
+    :param concurrent_num:  并发数
+    :param up_sleep: uploader 多少时间触发一次
+    :param listener_sleep: listener 多长时间触发一次
+    :param system:   人设
+
+    :param openai_api_key:  openai秘钥
+    :param openai_proxy:   http代理
+    :param openai_api_base:  openai endpoint
+    :param temperature:  gpt温度
+    :param max_tokens:  gpt输出长度
+    :param chat_model_kwargs:  langchain chatModel额外配置参数
+    :param llm_chain_kwargs:  langchain chatChain额外配置参数
+
+    :param brain:  含有run方法的类
+    :param mq:  通信队列
     """
-    default_system = "你是一个会评论视频B站用户，请根据视频内容做出总结、评论"
-    default_signals = ['总结一下']
-    prompt_temple = (
+    up_sleep: int = 5
+    system: str = "你是一个会评论视频B站用户，请根据视频内容做出总结、评论"
+    signals: Optional[List[str]] = ['总结一下']
+
+    credential: Optional[dict] = {}
+    limit_video_seconds: Optional[int] = 60 * 60 * 1
+    limit_token: Union[int, str, None] = None
+    limit_length: Optional[int] = None
+    compress_mode: Literal['random', 'left'] = 'random'
+
+    prompt_temple: str = (
         '视频内容如下\n'
         '标题:{title}'
         '{summary}'
     )
 
-    reply_temple = (
+    reply_temple: str = (
         '{answer}'
         '本条回复由AI生成，'
         '由@{nickname}召唤。'
     )  # answer: brain回复；nickname：发消息用户昵称
 
-    def __init__(
-            self,
-            credential: Optional[Credential] = None,
-            model_name='gpt-3.5-turbo',
-            signals=None,
-            limit_video_seconds: Optional[int] = None,
+    summary_generator: Optional[converts.SummaryGenerator] = None
+    aid_record_map: dict = {}
 
-            limit_token: Union[int, str, None] = None,
-            limit_length: Optional[int] = None,
-            compress_mode: Literal['random', 'left'] = 'random',
-            *args, **kwargs
-    ):
-        """
-        视频下at信息回复机器人
-        :param credential: bilibili认证
-        :param model_name: openai MODEL
-        :param signals:  at暗号
-
-        :param limit_video_seconds: 过滤视频长度
-        :param limit_token: 请求GPT token限制（可输入model name）
-        :param limit_length: 请求GPT 字符串长度限制
-        :param compress_mode: 请求GPT 压缩视频文案方式
-            - random：随机跳跃筛选
-            - left：从左到右
-
-        :param listeners:  感知
-        :param concurrent_num:  并发数
-        :param up_sleep: uploader 多少时间触发一次
-        :param listener_sleep: listener 多长时间触发一次
-        :param system:   人设
-
-        :param openai_api_key:  openai秘钥
-        :param openai_proxy:   http代理
-        :param openai_api_base:  openai endpoint
-        :param temperature:  gpt温度
-        :param max_tokens:  gpt输出长度
-        :param chat_model_kwargs:  langchain chatModel额外配置参数
-        :param llm_chain_kwargs:  langchain chatChain额外配置参数
-
-        :param brain:  含有run方法的类
-        :param mq:  通信队列
-        """
-        self.signals = signals or self.default_signals
-        if credential:
-            config.credential = credential
-        if not (limit_token or limit_length):
-            limit_token = model_name
+    def prepare(self):
+        config.log['handlers'].append('file')
+        self.signals = self.signals
+        # auth覆盖
+        for item in (self.credential or {}).items():
+            setattr(config.credential, *item)
         assert config.credential, '请提供认证config.credential'
-
-        self.limit_video_seconds = limit_video_seconds
+        if not (self.limit_token or self.limit_length):
+            self.limit_token = self.model_name
         self.summary_generator = converts.SummaryGenerator(
-            limit_token=limit_token,
-            limit_length=limit_length,
-            compress_mode=compress_mode
+            limit_token=self.limit_token,
+            limit_length=self.limit_length,
+            compress_mode=self.compress_mode
         )
         self.aid_record_map = {
             int(record_dict['listener_kwargs']['aid']): Record(**record_dict) for record_dict in self.query()
         }
-        chat_model_kwargs = {'model_name': model_name}
-        super().__init__([listener.SessionAtListener], chat_model_kwargs=chat_model_kwargs, *args, **kwargs)
 
-    async def execute_sop(self, schema: listener.SessionAtListener.Schema) -> Optional[reaction.CommentReaction]:
+    def get_listeners(self):
+        return [listener.SessionAtListener()]
+
+    async def execute_sop(self, schema: listener.SessionSchema) -> Optional[reaction.CommentReaction]:
         self.logger.info(f'step0:收到schema:{schema.source_content}')
         if not any([
             signal in schema.source_content for signal in self.signals
@@ -137,18 +137,44 @@ class VideoCommentUP(base.Uploader):
 
 class VtuBer(base.Uploader):
     """
+    bilibili直播数字人
     监听：直播间消息
     思考：过滤、调用GPT生成文本
     反应：语音回复
+    :param room_id:  bilibili直播房间号
+    :param credential:  bilibili 账号认证
+    :param is_filter: 是否开启过滤
+    :param user_input: 是否开启终端输入
+    :param extra_ban_words: 额外的违禁词
+
+    :param listeners:  感知
+    :param concurrent_num:  并发数
+    :param up_sleep: uploader 运行间隔时间
+    :param listener_sleep: listener 运行间隔时间
+    :param system:   人设
+
+    :param openai_api_key:  openai秘钥
+    :param openai_proxy:   http代理
+    :param openai_api_base:  openai endpoint
+    :param temperature:  gpt温度
+    :param max_tokens:  gpt输出长度
+    :param chat_model_kwargs:  langchain chatModel额外配置参数
+    :param llm_chain_kwargs:  langchain chatChain额外配置参数
+
+    :param brain:  含有run方法的类
+    :param mq:  通信队列
     """
-    default_system = '你是一个Bilibili主播'
 
-    safe_system = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
-
-    audio_temple = {
+    system: str = '你是一个Bilibili主播'
+    safe_system: str = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
+    room_id: int
+    credential: Optional[dict] = None
+    is_filter: bool = True
+    user_input: bool = False
+    audio_temple: dict = {
         enums.LiveInputType.danmu: (
-            '{user_name}说:{text}？'
-            '{answer}。'
+            '{user_name}说:{text}'
+            '{answer}'
         ),
         enums.LiveInputType.gift: (
             '感谢!{text}'
@@ -158,52 +184,27 @@ class VtuBer(base.Uploader):
         )
     }
 
-    def __init__(
-            self,
-            room_id: int,
-            credential: Optional[Credential] = None,
-            is_filter=True,
-            extra_ban_words: typing.List[str] = None,
-            user_input=False,
-            max_tokens=150,
-            *args,
-            **kwargs
-    ):
-        """
-        bilibili直播数字人
-        :param room_id:  bilibili直播房间号
-        :param credential:  bilibili 账号认证
-        :param is_filter: 是否开启过滤
-        :param user_input: 是否开启终端输入
-        :param extra_ban_words: 额外的违禁词
+    extra_ban_words: Optional[List[str]] = None
+    ban_word_filter: Any = None
 
-        :param listeners:  感知
-        :param concurrent_num:  并发数
-        :param up_sleep: uploader 运行间隔时间
-        :param listener_sleep: listener 运行间隔时间
-        :param system:   人设
-
-        :param openai_api_key:  openai秘钥
-        :param openai_proxy:   http代理
-        :param openai_api_base:  openai endpoint
-        :param temperature:  gpt温度
-        :param max_tokens:  gpt输出长度
-        :param chat_model_kwargs:  langchain chatModel额外配置参数
-        :param llm_chain_kwargs:  langchain chatChain额外配置参数
-
-        :param brain:  含有run方法的类
-        :param mq:  通信队列
-        """
-        listener.LiveListener.room_id = room_id
-        if credential:
-            config.credential = credential
+    def prepare(self):
+        # auth覆盖
+        for item in (self.credential or {}).items():
+            setattr(config.credential, *item)
         assert config.credential, '请提供认证config.credential'
-        listeners = [listener.LiveListener]
-        if user_input:
-            listeners.append(listener.ConsoleListener)
-        self.ban_word_filter: filters.BanWordsFilter = filters.BanWordsFilter(extra_ban_words=extra_ban_words) \
-            if is_filter else None
-        super().__init__(listeners, max_tokens=max_tokens, *args, **kwargs)
+        # 过滤
+        if self.is_filter and not self.ban_word_filter:
+            self.ban_word_filter = filters.BanWordsFilter(extra_ban_words=self.extra_ban_words)
+
+    def get_brain(self):
+        self.system = self.safe_system + self.system
+        return super().get_brain()
+
+    def get_listeners(self):
+        listeners = [listener.LiveListener(room_id=self.room_id)]
+        if self.user_input:
+            listeners.append(listener.ConsoleListener())
+        return listeners
 
     def console_2_live(self, schema):
         return {
@@ -213,9 +214,9 @@ class VtuBer(base.Uploader):
 
     def execute_sop(
             self,
-            schema: typing.Union[dict, listener.ConsoleListener.Schema]
-    ) -> typing.Union[None, reaction.TTSSpeakReaction]:
-        if isinstance(schema, listener.ConsoleListener.Schema):
+            schema: Union[dict, listener.UserSchema]
+    ) -> Union[None, reaction.TTSSpeakReaction]:
+        if isinstance(schema, listener.UserSchema):
             schema = self.console_2_live(schema)
         self.logger.info(f"收到消息，准备回复:{schema.get('text') or str(schema)}")
         audio_kwargs = {**schema}
