@@ -132,13 +132,13 @@ UserInputReplyUP(system='你是一位AI助手', listen='speech').loop()
 <br>
 
 ```python
-from langup import UserInputReplyUP, config, DEFAULT
+from langup import UserInputReplyUP, config
 
 # config.proxy = 'http://127.0.0.1:7890'
 # config.openai_api_key = 'xxx' or 创建.env文件 OPENAI_API_KEY=xxx
 
 # 终端回复
-# UserInputReplyUP(system=DEFAULT, listen='console').loop()
+UserInputReplyUP(system='你是一位AI助手', listen='console').loop()
 ```
 </details>
 
