@@ -19,7 +19,7 @@ class Auth(BaseModel):
     ]] = Field(default='load', description='获取cookie的浏览器,默认全部检查一遍')
 
     def get_auth(self):
-        if not self.credential:
+        if not self.credential and config.credential:
             print(f'未发现credential-准备读取浏览器自动获取Cookie...')
             cookie_dict = utils.get_cookies(domain_name='bilibili.com', browser=self.browser)
             self.credential = cookie_dict

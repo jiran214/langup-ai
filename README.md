@@ -77,11 +77,13 @@ from langup import config, VideoCommentUP
 up = VideoCommentUP(
     up_sleep=10,  # 生成回复间隔事件
     listener_sleep=60 * 2,  # 2分钟获取一次@消息
-    credential={
-        "sessdata": "xxx",
-        "bili_jct": "xxx",
-        "buvid3": "xxx"
-    },  # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
+    # credential={
+    #     "sessdata": "xxx",
+    #     "bili_jct": "xxx",
+    #     "buvid3": "xxx"
+    # },  
+    # credential 参数可不传,会自动读取浏览器                                                    
+    # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
     system="你是一个会评论视频B站用户，请根据视频内容做出总结、评论",
     signals=['总结一下'],
     openai_api_key='xxx',
