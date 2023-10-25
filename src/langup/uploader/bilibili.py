@@ -1,17 +1,37 @@
 from typing import Optional, Union, Literal, List, Any
 
 from bilibili_api import Credential, sync
-from pydantic import Field, ConfigDict
+from pydantic import Field, ConfigDict, BaseModel
 
 from langup import base, config, listener, BrainType
 from langup import reaction
 from langup.api.bilibili.video import Video
 from langup.brain.chains import llm
-from langup.utils import enums, filters, converts
+from langup.utils import enums, filters, converts, utils
 from langup.utils.utils import Record
 
 
-class VideoCommentUP(base.Uploader):
+class Auth(BaseModel):
+    credential: Optional[dict] = {}
+    browser: Optional[Literal[
+        'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
+        'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
+    ]] = Field(default='load', description='获取cookie的浏览器,默认全部检查一遍')
+
+    def get_auth(self):
+        if not self.credential:
+            print(f'未发现credential-准备读取浏览器自动获取Cookie...')
+            cookie_dict = utils.get_cookies(domain_name='bilibili.com', browser=self.browser)
+            self.credential = cookie_dict
+        # auth覆盖
+        attrs = ['sessdata', 'bili_jct', 'buvid3', 'dedeuserid', 'ac_time_value']
+        config.credential = Credential(**{attr: self.credential.get(attr, None) for attr in attrs})
+        assert config.credential.buvid3, '缺少buvid3，请检查登录状态'
+        assert config.credential.sessdata, '缺少sessdata，请检查登录状态'
+        assert config.credential, '请提供认证config.credential'
+
+
+class VideoCommentUP(base.Uploader, Auth):
     """
     视频下at信息回复机器人
     监听：@消息
@@ -50,7 +70,6 @@ class VideoCommentUP(base.Uploader):
     system: str = "你是一个会评论视频B站用户，请根据视频内容做出总结、评论"
     signals: Optional[List[str]] = ['总结一下']
 
-    credential: Optional[dict] = {}
     limit_video_seconds: Optional[int] = 60 * 60 * 1
     limit_token: Union[int, str, None] = None
     limit_length: Optional[int] = None
@@ -74,10 +93,7 @@ class VideoCommentUP(base.Uploader):
     def prepare(self):
         config.log['handlers'].append('file')
         self.signals = self.signals
-        # auth覆盖
-        for item in (self.credential or {}).items():
-            setattr(config.credential, *item)
-        assert config.credential, '请提供认证config.credential'
+        self.get_auth()
         if not (self.limit_token or self.limit_length):
             self.limit_token = self.model_name
         self.summary_generator = converts.SummaryGenerator(
@@ -135,7 +151,7 @@ class VideoCommentUP(base.Uploader):
         )
 
 
-class VtuBer(base.Uploader):
+class VtuBer(base.Uploader, Auth):
     """
     bilibili直播数字人
     监听：直播间消息
@@ -168,7 +184,6 @@ class VtuBer(base.Uploader):
     system: str = '你是一个Bilibili主播'
     safe_system: str = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
     room_id: int
-    credential: Optional[dict] = None
     is_filter: bool = True
     user_input: bool = False
     audio_temple: dict = {
@@ -189,9 +204,7 @@ class VtuBer(base.Uploader):
 
     def prepare(self):
         # auth覆盖
-        for item in (self.credential or {}).items():
-            setattr(config.credential, *item)
-        assert config.credential, '请提供认证config.credential'
+        self.get_auth()
         # 过滤
         if self.is_filter and not self.ban_word_filter:
             self.ban_word_filter = filters.BanWordsFilter(extra_ban_words=self.extra_ban_words)

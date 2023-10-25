@@ -63,13 +63,16 @@ class InitMixin:
         # 环境变量读取
         is_load = load_dotenv(verbose=True)
         print(f'读取.env文件变量:{str(is_load)}')
-        config.credential = Credential(
+        credential = Credential(
             sessdata=os.environ.get('sessdata'),
             bili_jct=os.environ.get('bili_jct'),
             buvid3=os.environ.get('buvid3'),
             dedeuserid=os.environ.get('dedeuserid'),
             ac_time_value=os.environ.get('ac_time_value'),
         )
+        if credential.sessdata and credential.buvid3:
+            config.credential = credential
+
         import openai  # 环境变量加载好后再导入
         # 路径配置
         for path in (config.tts['voice_path'], config.log['file_path'], config.convert['audio_path']):

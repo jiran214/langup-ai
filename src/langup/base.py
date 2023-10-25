@@ -93,9 +93,55 @@ class Reaction(BaseModel, abc.ABC):
         ...
 
 
+class LLM(BaseModel):
+    """
+    :param system:  人设
+    :param model_name:  gpt model
+    :param openai_api_key:  openai秘钥
+    :param openai_proxy:   http代理
+    :param openai_api_base:  openai endpoint
+    :param temperature:  gpt温度
+    :param max_tokens:  gpt输出长度
+    :param chat_model_kwargs:  langchain chatModel额外配置参数
+    :param llm_chain_kwargs:  langchain chatChain额外配置参数
+    """
+    # 人设
+    system: str = Field(default="You are a Bilibili UP")
+    # llm配置
+    model_name: str = Field(default="gpt-3.5-turbo", alias="model_name")
+    openai_api_key: Optional[str] = None  # openai秘钥
+    openai_proxy: Optional[str] = None  # http代理
+    openai_api_base: Optional[str] = None  # openai endpoint
+    temperature: Optional[float] = 0.7  # gpt温度
+    max_tokens: Optional[int] = None  # gpt输出长度
+    chat_model_kwargs: Optional[dict] = {}  # langchain chatModel额外配置参数
+    llm_chain_kwargs: Optional[dict] = None  # langchain chatChain额外配置参数
+
+    def get_brain(self):
+        self.chat_model_kwargs.update(
+            self.model_dump(include={
+                'model_name', 'openai_api_key', 'openai_proxy', 'openai_api_base', 'temperature', 'max_tokens'
+            })
+        )
+        self.chat_model_kwargs['openai_api_key'] = self.chat_model_kwargs['openai_api_key'] or config.openai_api_key
+        chain = get_llm_chain(
+            system=self.system,
+            llm=ChatOpenAI(
+                max_retries=2,
+                request_timeout=60,
+                **self.chat_model_kwargs or {},
+            ),
+            llm_chain_kwargs=self.llm_chain_kwargs
+        )
+        return chain
+
+    class Config:
+        protected_namespaces = ()
+
+
 class Uploader(
     abc.ABC,
-    BaseModel,
+    LLM,
     mixins.ConfigImport,
     mixins.Logger,
     mixins.InitMixin,
@@ -106,34 +152,12 @@ class Uploader(
     :param concurrent_num: 并发数
     :param up_sleep: uploader 运行间隔时间
     :param listener_sleep: listener 运行间隔时间
-    :param system:  人设
-
-    :param model_name:  gpt model
-    :param openai_api_key:  openai秘钥
-    :param openai_proxy:   http代理
-    :param openai_api_base:  openai endpoint
-    :param temperature:  gpt温度
-    :param max_tokens:  gpt输出长度
-    :param chat_model_kwargs:  langchain chatModel额外配置参数
-    :param llm_chain_kwargs:  langchain chatChain额外配置参数
-
     :param brain:  含有run方法的类
     :param mq:  通信队列
     """
     up_sleep: int = 1  # 运行间隔时间
-    system: str = Field(default="You are a Bilibili UP")  # 人设
     concurrent_num: int = 1   # 并发数
     listener_sleep: Optional[int] = None  # 运行间隔时间
-
-    # llm配置
-    model_name: str = Field(default="gpt-3.5-turbo", alias="model_name")
-    openai_api_key: Optional[str] = None  # openai秘钥
-    openai_proxy: Optional[str] = None  # http代理
-    openai_api_base: Optional[str] = None  # openai endpoint
-    temperature: Optional[float] = 0.7  # gpt温度
-    max_tokens: Optional[int] = None  # gpt输出长度
-    chat_model_kwargs: Optional[dict] = {}  # langchain chatModel额外配置参数
-    llm_chain_kwargs: Optional[dict] = None  # langchain chatChain额外配置参数
 
     mq: MQ = Field(default_factory=SimpleMQ)
     logger: Optional[Logger] = None
@@ -148,20 +172,6 @@ class Uploader(
         self.listeners = self.get_listeners()
         self.prepare()
 
-    def get_brain(self):
-        self.chat_model_kwargs.update(self.model_dump(include={'model_name', 'openai_api_key', 'openai_proxy', 'openai_api_base', 'temperature', 'max_tokens'}))
-        self.chat_model_kwargs['openai_api_key'] = self.chat_model_kwargs['openai_api_key'] or config.openai_api_key
-        chain = get_llm_chain(
-            system=self.system,
-            llm=ChatOpenAI(
-                max_retries=2,
-                request_timeout=60,
-                **self.chat_model_kwargs or {},
-            ),
-            llm_chain_kwargs=self.llm_chain_kwargs
-        )
-        return chain
-
     @abc.abstractmethod
     def prepare(self): ...
     @abc.abstractmethod
@@ -174,4 +184,3 @@ class Uploader(
 
     class Config:
         arbitrary_types_allowed = True
-        protected_namespaces = ()

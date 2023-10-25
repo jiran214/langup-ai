@@ -1,13 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-]
 import copy
 import functools
-import json
-import sys
-import threading
-import time
-from pprint import pprint
-from typing import Optional, Any
+from http.cookiejar import CookieJar
+from typing import Optional, Any, Literal
+import browser_cookie3
 
 from pydantic import BaseModel
 
@@ -133,3 +130,28 @@ def get_list(item):
         return item
     else:
         return [item]
+
+
+def get_cookies(
+        domain_name: str,
+        browser: Literal[
+            'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
+            'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
+        ] = 'load',
+        key_lower=True
+):
+    cookie_dict = {}
+    try:
+        cj: CookieJar = getattr(browser_cookie3, browser)(domain_name=domain_name)
+        for cookie in cj:
+            name = cookie.name
+            if key_lower:
+                name = name.lower()
+            cookie_dict[name] = cookie.value
+    except PermissionError as e:
+        raise PermissionError("""浏览器文件被占用，遇到此错误请尝试: 任务管理器彻底关闭进程""")
+    return cookie_dict
+
+
+if __name__ == '__main__':
+    print(get_cookies('bilibili.com'))
