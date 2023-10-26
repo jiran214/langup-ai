@@ -7,7 +7,7 @@ import queue
 import time
 from asyncio import iscoroutine
 from logging import Logger
-from typing import List, Optional, Callable, Union, Any
+from typing import List, Optional, Callable, Union, Any, Type
 
 from bilibili_api import sync
 from langchain.chat_models import ChatOpenAI
@@ -16,8 +16,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from langup import config, BrainType
 from langup.brain.chains.llm import get_llm_chain
 from langup.utils import mixins
-from langup.utils.thread import start_thread
-from langup.utils.utils import get_list
+from langup.utils.utils import get_list, start_thread
 
 
 class MQ(abc.ABC):
@@ -28,7 +27,7 @@ class MQ(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def recv(self) -> Union[BaseModel, dict]:
+    def recv(self) -> Any:
         ...
 
     @abc.abstractmethod
@@ -42,6 +41,7 @@ class SimpleMQ(queue.Queue, MQ):
         return self.get()
 
     def send(self, schema):
+        # 设置maxsize淘汰旧消息
         if self.maxsize != 0 and self.qsize() == self.maxsize:
             self.get()
         self.put(schema)
@@ -92,21 +92,10 @@ class Reaction(BaseModel, abc.ABC):
         ...
 
 
-class Uploader(
-    abc.ABC,
-    BaseModel,
-    mixins.ConfigImport,
-    mixins.Logger,
-    mixins.InitMixin,
-    mixins.Looper
-):
-    """
-    :param listeners: 感知
-    :param concurrent_num: 并发数
-    :param up_sleep: uploader 运行间隔时间
-    :param listener_sleep: listener 运行间隔时间
-    :param system:  人设
 
+class LLM(BaseModel):
+    """
+    :param system:  人设
     :param model_name:  gpt model
     :param openai_api_key:  openai秘钥
     :param openai_proxy:   http代理
@@ -115,15 +104,9 @@ class Uploader(
     :param max_tokens:  gpt输出长度
     :param chat_model_kwargs:  langchain chatModel额外配置参数
     :param llm_chain_kwargs:  langchain chatChain额外配置参数
-
-    :param brain:  含有run方法的类
-    :param mq:  通信队列
     """
-    up_sleep: int = 1  # 运行间隔时间
-    system: str = Field(default="You are a Bilibili UP")  # 人设
-    concurrent_num: int = 1   # 并发数
-    listener_sleep: Optional[int] = None  # 运行间隔时间
-
+    # 人设
+    system: str = Field(default="You are a Bilibili UP")
     # llm配置
     model_name: str = Field(default="gpt-3.5-turbo", alias="model_name")
     openai_api_key: Optional[str] = None  # openai秘钥
@@ -134,21 +117,12 @@ class Uploader(
     chat_model_kwargs: Optional[dict] = {}  # langchain chatModel额外配置参数
     llm_chain_kwargs: Optional[dict] = None  # langchain chatChain额外配置参数
 
-    mq: MQ = Field(default_factory=SimpleMQ)
-    logger: Optional[Logger] = None
-    listeners: List[Listener] = []
-    brain: Union[BrainType, None] = None
-
-    def init(self):
-        self.init_config()
-        chain = self.get_brain()
-        self.brain = chain
-        self.listener_sleep = None
-        self.listeners = self.get_listeners()
-        self.prepare()
-
     def get_brain(self):
-        self.chat_model_kwargs.update(self.model_dump(include={'model_name', 'openai_api_key', 'openai_proxy', 'openai_api_base', 'temperature', 'max_tokens'}))
+        self.chat_model_kwargs.update(
+            self.model_dump(include={
+                'model_name', 'openai_api_key', 'openai_proxy', 'openai_api_base', 'temperature', 'max_tokens'
+            })
+        )
         self.chat_model_kwargs['openai_api_key'] = self.chat_model_kwargs['openai_api_key'] or config.openai_api_key
         chain = get_llm_chain(
             system=self.system,
@@ -161,16 +135,54 @@ class Uploader(
         )
         return chain
 
-    @abc.abstractmethod
-    def prepare(self): ...
-    @abc.abstractmethod
-    def get_listeners(self): ...
+    class Config:
+        protected_namespaces = ()
+
+
+class Uploader(
+    abc.ABC,
+    LLM,
+    mixins.ConfigImport,
+    mixins.Logger,
+    mixins.InitMixin,
+    mixins.Looper
+):
+    """
+    :param listeners: 感知
+    :param concurrent_num: 并发数
+    :param up_sleep: uploader 运行间隔时间
+    :param listener_sleep: listener 运行间隔时间
+    :param brain:  含有run方法的类
+    :param mq:  通信队列
+    """
+    up_sleep: int = 1  # 运行间隔时间
+    concurrent_num: int = 1   # 并发数
+    listener_sleep: Optional[int] = None  # 运行间隔时间
+
+    mq: MQ = Field(default_factory=SimpleMQ)
+    logger: Optional[Logger] = None
+    listeners: List[Listener] = []
+    brain: Union[BrainType, None] = None
+
+    def init(self):
+        self.init_config()
+        chain = self.get_brain()
+        self.brain = chain
+        self.listener_sleep = None
+        self.listeners = self.listeners + self.get_listeners()
+        self.prepare()
+
     @abc.abstractmethod
     def execute_sop(self, schema) -> Union[Reaction, List[Reaction]]: ...
+
+    def get_listeners(self) -> List[Listener]:
+        return []
+
+    def prepare(self):
+        pass
 
     def callback(self):
         pass
 
     class Config:
         arbitrary_types_allowed = True
-        protected_namespaces = ()

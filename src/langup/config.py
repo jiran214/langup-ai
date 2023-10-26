@@ -7,6 +7,7 @@ from typing import Union
 from bilibili_api import Credential
 
 
+VERSION = '0.0.9'
 credential: Union['Credential', None] = None
 work_dir = './'
 

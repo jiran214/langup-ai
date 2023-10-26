@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-]
 import copy
 import functools
-import json
-import sys
 import threading
-import time
-from pprint import pprint
-from typing import Optional, Any
+from asyncio import iscoroutinefunction
+from http.cookiejar import CookieJar
+from typing import Optional, Any, Literal, Callable
+import browser_cookie3
+from bilibili_api import sync
 
 from pydantic import BaseModel
 
@@ -133,3 +133,43 @@ def get_list(item):
         return item
     else:
         return [item]
+
+
+def get_cookies(
+        domain_name: str,
+        browser: Literal[
+            'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
+            'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
+        ] = 'load',
+        key_lower=True
+):
+    cookie_dict = {}
+    try:
+        cj: CookieJar = getattr(browser_cookie3, browser)(domain_name=domain_name)
+        for cookie in cj:
+            name = cookie.name
+            if key_lower:
+                name = name.lower()
+            cookie_dict[name] = cookie.value
+    except PermissionError as e:
+        raise PermissionError("""浏览器文件被占用，遇到此错误请尝试: 任务管理器彻底关闭进程""")
+    return cookie_dict
+
+
+def async_wrapper(fun):
+    """带参数的协程函数变成coroutine对象"""
+    @functools.wraps(fun)
+    async def wrap(*args, **kwargs):
+        await fun(*args, **kwargs)
+    return wrap
+
+
+def start_thread(job: Callable):
+    """启动线程"""
+    if iscoroutinefunction(job):
+        sync_job = lambda: sync(job())
+    else:
+        sync_job = job
+    t = threading.Thread(target=sync_job)
+    t.start()
+    return t

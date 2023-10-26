@@ -23,8 +23,7 @@
   
 
 ## 快速开始
-- 安装完成后，新建.py文件参考以下代码（注意：采用方式二安装时，可以在src/下新建）
-- api_key和cookie等信息建议写到.env文件中，程序会隐式读取，参考src/.env.temple
+安装完成后，新建.py文件参考以下代码（注意：采用方式二安装时，可以在src/下新建）
 
 <details>
     <summary>Bilibili 直播数字人</summary>
@@ -78,11 +77,13 @@ from langup import config, VideoCommentUP
 up = VideoCommentUP(
     up_sleep=10,  # 生成回复间隔事件
     listener_sleep=60 * 2,  # 2分钟获取一次@消息
-    credential={
-        "sessdata": "xxx",
-        "bili_jct": "xxx",
-        "buvid3": "xxx"
-    },  # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
+    # credential={
+    #     "sessdata": "xxx",
+    #     "bili_jct": "xxx",
+    #     "buvid3": "xxx"
+    # },  
+    # credential 参数可不传,会自动读取浏览器                                                    
+    # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
     system="你是一个会评论视频B站用户，请根据视频内容做出总结、评论",
     signals=['总结一下'],
     openai_api_key='xxx',
@@ -208,10 +209,14 @@ debug = True
 更多机器人开发中...
 <br>
 
-注意：
+## 注意事项
 - api_key可自动从环境变量获取
 - 国内环境需要设置代理或者openai_api_base 推荐config.proxy='xxx'全局设置，避免设置局部代理导致其它服务不可用
-- Bilibili UP都需要 认证信息  # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
+- Bilibili UP都需要 认证信息，获取使用方式如下
+  - 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential 
+  - 作为字典参数"credential"传入，或者api_key和Bilibili cookie等信息可以写到.env文件中，程序会隐式读取，参考src/.env.temple
+  - 10.26更新，不需要手动获取，只要你浏览器最近登录过，程序会自动读取浏览器数据 
+    （可以优先尝试，注意windows用户需要完全关闭浏览器进程，否则会出现资源占用情况）
 
 ## 架构设计
 部分模块待实现
@@ -236,7 +241,8 @@ debug = True
 - Reaction
 - 其它
   - 日志记录
-  - pydantic model 
+  - pydantic重构部分类
+  - 认证信息自动获取
 
 ## 提示
 <details>

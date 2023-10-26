@@ -16,17 +16,16 @@ from pydantic import BaseModel
 from langup import config
 from langup.utils import consts
 from langup.utils.logger import get_logging_logger
-from langup.utils.thread import start_thread, sync
-from langup.utils.utils import Record, format_print, get_list
+from langup.utils.utils import Record, format_print, get_list, start_thread
 
 _is_init_config = False
 
 
-class ConfigImport:
+class ConfigImport(BaseModel):
 
     @classmethod
     def from_json_file(cls, json_path):
-        json_data = json.load(fp=json_path, encoding='utf-8')
+        json_data = json.loads(fp=json_path, encoding='utf-8')
         up = cls(**json_data)
         return up
 
@@ -63,13 +62,16 @@ class InitMixin:
         # 环境变量读取
         is_load = load_dotenv(verbose=True)
         print(f'读取.env文件变量:{str(is_load)}')
-        config.credential = Credential(
+        credential = Credential(
             sessdata=os.environ.get('sessdata'),
             bili_jct=os.environ.get('bili_jct'),
             buvid3=os.environ.get('buvid3'),
             dedeuserid=os.environ.get('dedeuserid'),
             ac_time_value=os.environ.get('ac_time_value'),
         )
+        if credential.sessdata and credential.buvid3:
+            config.credential = credential
+
         import openai  # 环境变量加载好后再导入
         # 路径配置
         for path in (config.tts['voice_path'], config.log['file_path'], config.convert['audio_path']):

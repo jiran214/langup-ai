@@ -4,7 +4,7 @@
 # @Author  : 雷雨
 # @File    : __init__.py.py
 # @Desc    :
-from langup.listener.bilibili import SessionAtListener, LiveListener, SessionSchema
+from langup.listener.bilibili import SessionAtListener, LiveListener, SessionSchema, ChatListener
 from langup.listener.user import ConsoleListener, SpeechListener, UserSchema
 
 
@@ -13,5 +13,6 @@ __all__ = [
     'SessionAtListener',
     'LiveListener',
     'ConsoleListener',
+    'ChatListener',
     'UserSchema'
 ]
