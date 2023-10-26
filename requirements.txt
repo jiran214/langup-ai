@@ -12,5 +12,5 @@ urllib3==1.26.17
 aiofiles~=23.2.1
 setuptools~=65.5.1
 tiktoken~=0.5.1
-python-dotenv-1.0.0
+python-dotenv==1.0.0
 SpeechRecognition==3.10.0
