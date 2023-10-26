@@ -7,7 +7,7 @@ import queue
 import time
 from asyncio import iscoroutine
 from logging import Logger
-from typing import List, Optional, Callable, Union, Any
+from typing import List, Optional, Callable, Union, Any, Type
 
 from bilibili_api import sync
 from langchain.chat_models import ChatOpenAI
@@ -16,8 +16,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from langup import config, BrainType
 from langup.brain.chains.llm import get_llm_chain
 from langup.utils import mixins
-from langup.utils.thread import start_thread
-from langup.utils.utils import get_list
+from langup.utils.utils import get_list, start_thread
 
 
 class MQ(abc.ABC):
@@ -28,7 +27,7 @@ class MQ(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def recv(self) -> Union[BaseModel, dict]:
+    def recv(self) -> Any:
         ...
 
     @abc.abstractmethod
@@ -91,6 +90,7 @@ class Reaction(BaseModel, abc.ABC):
     @abc.abstractmethod
     async def areact(self):
         ...
+
 
 
 class LLM(BaseModel):
@@ -169,15 +169,17 @@ class Uploader(
         chain = self.get_brain()
         self.brain = chain
         self.listener_sleep = None
-        self.listeners = self.get_listeners()
+        self.listeners = self.listeners + self.get_listeners()
         self.prepare()
 
     @abc.abstractmethod
-    def prepare(self): ...
-    @abc.abstractmethod
-    def get_listeners(self): ...
-    @abc.abstractmethod
     def execute_sop(self, schema) -> Union[Reaction, List[Reaction]]: ...
+
+    def get_listeners(self) -> List[Listener]:
+        return []
+
+    def prepare(self):
+        pass
 
     def callback(self):
         pass

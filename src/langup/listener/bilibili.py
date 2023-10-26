@@ -1,12 +1,15 @@
-from typing import Optional, Type, List
+import enum
+from typing import Optional, Type, List, Union
 
+from bilibili_api import Picture
 from bilibili_api.session import Event
 from pydantic import BaseModel
 
 from langup import api, base, config
+from langup.api.bilibili.video import Video
 from langup.base import MQ
 from langup.utils import vid_transform
-from langup.utils.thread import start_thread
+from langup.utils.utils import start_thread
 
 
 class SessionSchema(BaseModel):
@@ -70,19 +73,53 @@ class LiveListener(base.Listener):
         return self.live_mq.recv()
 
 
+class EventName(enum.Enum):
+    """事件类型:
+    + TEXT:           纯文字消息
+    + PICTURE:        图片消息
+    + WITHDRAW:       撤回消息
+    + GROUPS_PICTURE: 应援团图片，但似乎不常触发，一般使用 PICTURE 即可
+    + SHARE_VIDEO:    分享视频
+    + NOTICE:         系统通知
+    + PUSHED_VIDEO:   UP主推送的视频
+    + WELCOME:        新成员加入应援团欢迎
+    """
+    TEXT = "1"
+    PICTURE = "2"
+    WITHDRAW = "5"
+    GROUPS_PICTURE = "6"
+    SHARE_VIDEO = "7"
+    NOTICE = "10"
+    PUSHED_VIDEO = "11"
+    WELCOME = "306"
+
+
+class ChatEvent(BaseModel):
+    # content: Union[str, int, Picture, Video]
+    content: str
+    sender_uid: int
+    uid: int
+
+
 class ChatListener(base.Listener):
-    Schema: Type[Event] = Event
+    event_name_list: List[EventName]
+
+    Schema: Type[Event] = ChatEvent
     listener_sleep: int = 6
     max_size: Optional[int] = 0
     session_mq: Optional[MQ] = None
-    event_name_list: List[str]
 
     def init(self, mq: MQ, listener_sleep: Optional[int] = 0):
         self.session_mq = base.SimpleMQ(maxsize=self.max_size)
         s = api.bilibili.session.ChatSession(credential=config.credential, mq=self.session_mq)
-        s.register_handlers(self.event_name_list)
+        s.register_handlers([event_name.value for event_name in self.event_name_list])
         t = start_thread(s.connect)
         super().init(mq, listener_sleep)
 
     async def _alisten(self):
-        return self.session_mq.recv()
+        event: Event = self.session_mq.recv()
+        return ChatEvent(
+            sender_uid=event.sender_uid,
+            uid=event.uid,
+            content=event.content
+        )

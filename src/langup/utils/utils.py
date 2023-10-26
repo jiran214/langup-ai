@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-]
 import copy
 import functools
+import threading
+from asyncio import iscoroutinefunction
 from http.cookiejar import CookieJar
-from typing import Optional, Any, Literal
+from typing import Optional, Any, Literal, Callable
 import browser_cookie3
+from bilibili_api import sync
 
 from pydantic import BaseModel
 
@@ -153,5 +156,20 @@ def get_cookies(
     return cookie_dict
 
 
-if __name__ == '__main__':
-    print(get_cookies('bilibili.com'))
+def async_wrapper(fun):
+    """带参数的协程函数变成coroutine对象"""
+    @functools.wraps(fun)
+    async def wrap(*args, **kwargs):
+        await fun(*args, **kwargs)
+    return wrap
+
+
+def start_thread(job: Callable):
+    """启动线程"""
+    if iscoroutinefunction(job):
+        sync_job = lambda: sync(job())
+    else:
+        sync_job = job
+    t = threading.Thread(target=sync_job)
+    t.start()
+    return t

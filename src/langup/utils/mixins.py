@@ -16,17 +16,16 @@ from pydantic import BaseModel
 from langup import config
 from langup.utils import consts
 from langup.utils.logger import get_logging_logger
-from langup.utils.thread import start_thread, sync
-from langup.utils.utils import Record, format_print, get_list
+from langup.utils.utils import Record, format_print, get_list, start_thread
 
 _is_init_config = False
 
 
-class ConfigImport:
+class ConfigImport(BaseModel):
 
     @classmethod
     def from_json_file(cls, json_path):
-        json_data = json.load(fp=json_path, encoding='utf-8')
+        json_data = json.loads(fp=json_path, encoding='utf-8')
         up = cls(**json_data)
         return up
 

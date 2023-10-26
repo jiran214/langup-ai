@@ -1,12 +1,14 @@
 from typing import Optional, Union, Literal, List, Any
 
 from bilibili_api import Credential, sync
-from pydantic import Field, ConfigDict, BaseModel
+from bilibili_api.session import Event
+from pydantic import Field, BaseModel
 
 from langup import base, config, listener, BrainType
 from langup import reaction
 from langup.api.bilibili.video import Video
-from langup.brain.chains import llm
+from langup.base import Reaction, Listener
+from langup.listener.bilibili import EventName, ChatEvent
 from langup.utils import enums, filters, converts, utils
 from langup.utils.utils import Record
 
@@ -16,10 +18,11 @@ class Auth(BaseModel):
     browser: Optional[Literal[
         'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
         'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
-    ]] = Field(default='load', description='获取cookie的浏览器,默认全部检查一遍')
+    ]] = Field(default='load', description='获取cookie的浏览器,默认全部检查一遍,建议手动设置')
 
     def get_auth(self):
-        if not self.credential and config.credential:
+        # cookie获取
+        if not (self.credential or config.credential):
             print(f'未发现credential-准备读取浏览器自动获取Cookie...')
             cookie_dict = utils.get_cookies(domain_name='bilibili.com', browser=self.browser)
             self.credential = cookie_dict
@@ -28,7 +31,6 @@ class Auth(BaseModel):
         config.credential = Credential(**{attr: self.credential.get(attr, None) for attr in attrs})
         assert config.credential.buvid3, '缺少buvid3，请检查登录状态'
         assert config.credential.sessdata, '缺少sessdata，请检查登录状态'
-        assert config.credential, '请提供认证config.credential'
 
 
 class VideoCommentUP(base.Uploader, Auth):
@@ -253,3 +255,19 @@ class VtuBer(base.Uploader, Auth):
             return
         schema['type'] = schema['type'].value
         return reaction.TTSSpeakReaction(audio_txt=audio_txt, block=True)
+
+
+class ChatUP(base.Uploader, Auth):
+    system: str = '你是一位聊天AI助手'
+    event_name_list: List[EventName] = [EventName.TEXT]
+
+    def prepare(self):
+        # auth覆盖
+        self.get_auth()
+
+    def get_listeners(self) -> List[Listener]:
+        return [listener.ChatListener(event_name_list=self.event_name_list)]
+
+    def execute_sop(self, schema: ChatEvent) -> Union[Reaction, List[Reaction]]:
+        answer = self.brain.run(schema.content)
+        return reaction.ChatReaction(content=answer, uid=schema.uid, sender_uid=schema.sender_uid)
