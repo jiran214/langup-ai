@@ -1,16 +1,16 @@
 import setuptools  # 导入setuptools打包工具
-from langup import __version__
+
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 # python setup.py sdist & python setup.py bdist_wheel
-# twine upload dist/langup-0.0.9* -u__token__
+# twine upload dist/langup-0.0.10* -u__token__
 
 
 setuptools.setup(
     name="langup",
-    version=__version__,
+    version='0.0.10',
     author="ran",
     author_email="jiran214@qq.com",
     description="社交网络机器人",
