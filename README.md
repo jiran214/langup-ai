@@ -11,7 +11,7 @@
 
 - 方式一
   ```shell
-  pip install langup==0.0.9
+  pip install langup==0.0.10
   ```
 - 方式二(建议使用python 虚拟环境)
   ```shell
@@ -23,7 +23,8 @@
   
 
 ## 快速开始
-安装完成后，新建.py文件参考以下代码（注意：采用方式二安装时，可以在src/下新建）
+- 安装完成后，新建.py文件参考以下代码（注意：采用方式二安装时，可以在src/下新建）
+- 所有代码示例 src/examples可见
 
 <details>
     <summary>Bilibili 直播数字人</summary>
@@ -38,15 +39,17 @@ up = VtuBer(
 背景：通过直播中和用户弹幕的互动，产出有趣的对话，以此吸引更多人来观看直播并关注你。
 任务：你在直播过程中会对每一位直播间用户发的弹幕进行回答，但是要以“杠精”的思维去回答，你会怒怼这些弹幕，不放过每一条弹幕，每次回答字数不能超过100字。""",  # 人设
     room_id=00000,  # Bilibili房间号
-    credential = {
-        "sessdata": 'xxx',
-        "bili_jct": 'xxx',
-        "buvid3": "xxx"
-    },
     openai_api_key="""xxx""",  # 同上
     is_filter=True,  # 是否开启过滤
     extra_ban_words=[],  # 额外的违禁词
     concurrent_num=2  # 控制回复弹幕速度
+  
+    # credential 参数说明
+    # 方式一: credential为空，从工作目录/.env文件读取credential
+    # 方式二: 直接传入 https://nemo2011.github.io/bilibili-api/#/get-credential
+    # credential={"sessdata": 'xxx', "buvid3": 'xxx', "bili_jct": 'xxx'}
+    # 方式三: 从浏览器资源读取
+    # browser='edge'
 )
 up.loop()
 ```
@@ -77,17 +80,17 @@ from langup import config, VideoCommentUP
 up = VideoCommentUP(
     up_sleep=10,  # 生成回复间隔事件
     listener_sleep=60 * 2,  # 2分钟获取一次@消息
-    # credential={
-    #     "sessdata": "xxx",
-    #     "bili_jct": "xxx",
-    #     "buvid3": "xxx"
-    # },  
-    # credential 参数可不传,会自动读取浏览器                                                    
-    # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
     system="你是一个会评论视频B站用户，请根据视频内容做出总结、评论",
     signals=['总结一下'],
     openai_api_key='xxx',
-    model_name='gpt-3.5-turbo'
+    model_name='gpt-3.5-turbo',
+  
+    # credential 参数说明
+    # 方式一: credential为空，从工作目录/.env文件读取credential
+    # 方式二: 直接传入 https://nemo2011.github.io/bilibili-api/#/get-credential
+    # credential={"sessdata": 'xxx', "buvid3": 'xxx', "bili_jct": 'xxx'}
+    # 方式三: 自动从浏览器资源读取
+    # browser='edge'
 )
 up.loop()
 ```
@@ -109,6 +112,29 @@ up.loop()
 :param listener_sleep: listener 每次读取@消息的间隔运行时间(秒)
 ...见更多配置
 """
+```
+</details>
+
+<details>
+    <summary>B站私信Bot</summary>
+<br>
+
+```python
+from langup import ChatUP, Event
+
+
+# bilibili cookie 通过浏览器edge提取，apikey从.env读取
+ChatUP(
+    system='你是一位聊天AI助手',
+    # event_name_list 订阅消息列表
+    event_name_list=[Event.TEXT],
+    # credential 参数说明
+    # 方式一: credential为空，从工作目录/.env文件读取credential
+    # 方式二: 直接传入 https://nemo2011.github.io/bilibili-api/#/get-credential
+    # credential={"sessdata": 'xxx', "buvid3": 'xxx', "bili_jct": 'xxx'}
+    # 方式三: 自动从浏览器资源读取
+    # browser='load'
+).loop()
 ```
 </details>
 

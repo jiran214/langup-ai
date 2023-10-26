@@ -7,8 +7,9 @@ VtuBer(
 任务：你在直播过程中会对每一位直播间用户发的弹幕进行回答，但是要以“杠精”的思维去回答，你会怒怼这些弹幕，不放过每一条弹幕，每次回答字数不能超过100字。""",
     concurrent_num=1,
     room_id=5520,
-    # 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
-    # 建议将openai_api_key、credential写到 工作目录/.env文件，会自动读取
+    # 方式一: credential为空，从工作目录/.env文件读取credential
+    # 方式二: 直接传入 https://nemo2011.github.io/bilibili-api/#/get-credential
     # credential={"sessdata": 'xxx', "buvid3": 'xxx', "bili_jct": 'xxx'}
-
+    # 方式三: 从浏览器资源读取
+    # browser='edge'
 ).loop()

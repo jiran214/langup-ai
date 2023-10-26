@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 # python setup.py sdist & python setup.py bdist_wheel
-# twine upload dist/langup-0.0.9* -u__token__
+# twine upload dist/langup-0.0.10* -u__token__
 
 
 setuptools.setup(
