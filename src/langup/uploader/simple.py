@@ -40,7 +40,7 @@ class UserInputReplyUP(base.Uploader):
     temple: str = '{answer}。'
     listen: Literal['console', 'speech']
 
-    def prepare(self):
+    def _init(self):
         pass
 
     def init(self):

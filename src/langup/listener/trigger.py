@@ -16,7 +16,7 @@ class JobScheduler(base.Listener):
     scheduler_mq: base.MQ = Field(default_factory=base.SimpleMQ)
     trigger: Literal['date', 'interval', 'cron']
     sche_kwargs: dict
-    callback: Callable = Field(description='Callback输出会给到up')
+    callback: Callable = Field(description='Callback输出会传到up')
     Schema: Any = None
 
     def init(self, mq, listener_sleep=None):

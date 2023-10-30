@@ -92,7 +92,7 @@ class VideoCommentUP(base.Uploader, Auth):
     summary_generator: Optional[converts.SummaryGenerator] = None
     aid_record_map: dict = {}
 
-    def prepare(self):
+    def _init(self):
         config.log['handlers'].append('file')
         self.signals = self.signals
         self.get_auth()
@@ -204,7 +204,7 @@ class VtuBer(base.Uploader, Auth):
     extra_ban_words: Optional[List[str]] = None
     ban_word_filter: Any = None
 
-    def prepare(self):
+    def _init(self):
         # auth覆盖
         self.get_auth()
         # 过滤
@@ -261,7 +261,7 @@ class ChatUP(base.Uploader, Auth):
     system: str = '你是一位聊天AI助手'
     event_name_list: List[EventName] = [EventName.TEXT]
 
-    def prepare(self):
+    def _init(self):
         # auth覆盖
         self.get_auth()
 

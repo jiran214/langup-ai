@@ -55,7 +55,7 @@ class Listener(BaseModel, abc.ABC):
     middlewares: Optional[List[Callable]] = []
 
     def init(self, mq: MQ, listener_sleep: Optional[int] = None):
-        if listener_sleep is not None: self.listener_sleep = listener_sleep
+        self.listener_sleep = listener_sleep or self.listener_sleep
         self.mq_list.append(mq)
 
     @abc.abstractmethod
@@ -90,7 +90,6 @@ class Reaction(BaseModel, abc.ABC):
     @abc.abstractmethod
     async def areact(self):
         ...
-
 
 
 class LLM(BaseModel):
@@ -166,11 +165,9 @@ class Uploader(
 
     def init(self):
         self.init_config()
-        chain = self.get_brain()
-        self.brain = chain
-        self.listener_sleep = None
+        self.brain = self.chain or self.get_brain()
         self.listeners = self.listeners + self.get_listeners()
-        self.prepare()
+        self._init()
 
     @abc.abstractmethod
     def execute_sop(self, schema) -> Union[Reaction, List[Reaction]]: ...
@@ -178,7 +175,7 @@ class Uploader(
     def get_listeners(self) -> List[Listener]:
         return []
 
-    def prepare(self):
+    def _init(self):
         pass
 
     def callback(self):
