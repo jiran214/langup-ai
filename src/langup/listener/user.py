@@ -6,7 +6,7 @@
 # @Desc    :
 import abc
 import threading
-from typing import Type
+from typing import Type, ClassVar
 
 from pydantic import BaseModel, Field
 from langup import base, config
@@ -24,7 +24,7 @@ class UserSchema(BaseModel):
 class UserInputListener(base.Listener, abc.ABC):
     user_event: threading.Event = Field(default_factory=threading.Event)
     listener_sleep: int = 0
-    Schema: Type[UserSchema] = UserSchema
+    Schema: ClassVar = UserSchema
 
     @abc.abstractmethod
     def get_input(self): ...

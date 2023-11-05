@@ -6,11 +6,10 @@ import threading
 import time
 from asyncio import iscoroutine
 from datetime import datetime
-from typing import ClassVar
+from typing import ClassVar, TYPE_CHECKING
 
 import bilibili_api
 import openai
-from bilibili_api import Credential
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
@@ -18,6 +17,11 @@ from langup import config
 from langup.utils import consts
 from langup.utils.logger import get_logging_logger
 from langup.utils.utils import Record, format_print, get_list, start_thread
+
+
+if TYPE_CHECKING:
+    from langup import base
+
 
 _is_init_config = False
 
@@ -63,17 +67,6 @@ class InitMixin:
         # 环境变量读取
         is_load = load_dotenv(verbose=True)
         self.logger.info(f'读取.env文件变量:{str(is_load)}')
-        credential = Credential(
-            sessdata=os.environ.get('sessdata'),
-            bili_jct=os.environ.get('bili_jct'),
-            buvid3=os.environ.get('buvid3'),
-            dedeuserid=os.environ.get('dedeuserid'),
-            ac_time_value=os.environ.get('ac_time_value'),
-        )
-        if credential.sessdata and credential.buvid3:
-            config.credential = credential
-
-        import openai  # 环境变量加载好后再导入
         # 路径配置
         for path in (config.tts['voice_path'], config.log['file_path'], config.convert['audio_path']):
             path = config.work_dir + path

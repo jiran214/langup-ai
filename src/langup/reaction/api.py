@@ -1,4 +1,4 @@
-from typing import Optional, Literal, Type
+from typing import Optional, Literal, Type, ClassVar
 
 import requests
 from pip._internal.network.utils import raise_for_status
@@ -14,7 +14,7 @@ class SyncAPIReaction(base.Reaction):
     url: str
     data: Optional[dict] = None
     json_data: Optional[dict] = None
-    Schema: Type[Response] = Response
+    Schema: ClassVar = Response
 
     async def areact(self):
         session = self.session or requests.request

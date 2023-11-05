@@ -1,5 +1,5 @@
 import queue
-from typing import Optional, Literal, Type
+from typing import Optional, Literal, Type, ClassVar
 
 from pip._internal.network.utils import raise_for_status
 from pydantic import Field
@@ -15,7 +15,7 @@ class SyncAPIListener(base.Listener):
     url: str
     data: Optional[dict] = None
     json_data: Optional[dict] = None
-    Schema: Type[Response] = Response
+    Schema: ClassVar = Response
 
     async def _alisten(self):
         session = self.session or requests.request

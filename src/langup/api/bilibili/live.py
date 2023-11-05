@@ -55,11 +55,11 @@ def event_wrap(func, mq):
 
 
 class BlLiveRoom:
-    def __init__(self, room_id, mq: base.MQ, credential=None):
+    def __init__(self, room_id, mq: base.MQ, credential):
         self.room = live.LiveDanmaku(
             room_display_id=int(room_id),
             # debug=config.debug,
-            credential=credential or config.credential
+            credential=credential
         )
         self.mq = mq
         self.add_event_listeners()

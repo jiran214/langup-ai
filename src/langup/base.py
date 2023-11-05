@@ -5,7 +5,7 @@ import asyncio
 import queue
 
 from logging import Logger
-from typing import List, Optional, Callable, Union, Any
+from typing import List, Optional, Callable, Union, Any, ClassVar
 
 from langchain.chat_models import ChatOpenAI
 from pydantic import BaseModel, Field
@@ -45,14 +45,18 @@ class SimpleMQ(queue.Queue, MQ):
 
 class Listener(BaseModel, abc.ABC):
     """监听api 通知绑定消息队列"""
+    Schema: ClassVar = None
     listener_sleep: int = 5
-    Schema: Any = None
     mq_list: List[MQ] = []
     middlewares: Optional[List[Callable]] = []
 
     def init(self, mq: MQ, listener_sleep: Optional[int] = None):
+        self.check()
         self.listener_sleep = listener_sleep or self.listener_sleep
         self.mq_list.append(mq)
+
+    def check(self):
+        pass
 
     @abc.abstractmethod
     async def _alisten(self):
@@ -169,7 +173,7 @@ class Uploader(
         self._init()
 
     @abc.abstractmethod
-    def execute_sop(self, schema) -> Union[Reaction, List[Reaction]]: ...
+    def execute_sop(self, schema) -> Union[Reaction, List[Reaction], None]: ...
 
     def get_listeners(self) -> List[Listener]:
         return []

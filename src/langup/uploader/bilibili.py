@@ -1,3 +1,6 @@
+import abc
+import functools
+import os
 from typing import Optional, Union, Literal, List, Any
 
 from bilibili_api import Credential, sync
@@ -14,28 +17,29 @@ from langup.utils import enums, filters, converts, utils
 from langup.utils.utils import Record
 
 
-class Auth(BaseModel):
+class BilibiliUP(base.Uploader, abc.ABC):
     credential: Optional[dict] = {}
     browser: Optional[Literal[
         'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
         'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
     ]] = Field(default='load', description='获取cookie的浏览器,默认全部检查一遍,建议手动设置')
 
-    def get_auth(self):
+    @functools.cached_property
+    def auth(self) -> Credential:# auth覆盖
+        attrs = ['sessdata', 'bili_jct', 'buvid3', 'dedeuserid', 'ac_time_value']
         # cookie获取
         if not (self.credential or config.credential):
-            print(f'未发现credential-准备读取浏览器自动获取Cookie...')
-            cookie_dict = utils.get_cookies(domain_name='bilibili.com', browser=self.browser)
+            print(f'未发现credential-尝试从.env环境变量获取...')
+            cookie_dict = {attr: os.environ.get(attr, None) for attr in attrs}
+            if not (cookie_dict.get('sessdata') and cookie_dict.get('buvid3')):
+                print(f'未发现credential-尝试从浏览器获取...')
+                cookie_dict = utils.get_cookies(domain_name='bilibili.com', browser=self.browser)
             self.credential = cookie_dict
-        elif self.credential:
-            # auth覆盖
-            attrs = ['sessdata', 'bili_jct', 'buvid3', 'dedeuserid', 'ac_time_value']
             config.credential = Credential(**{attr: self.credential.get(attr, None) for attr in attrs})
-        assert config.credential.buvid3, '缺少buvid3，请检查登录状态'
-        assert config.credential.sessdata, '缺少sessdata，请检查登录状态'
+        return config.credential
 
 
-class VideoCommentUP(base.Uploader, Auth):
+class VideoCommentUP(BilibiliUP):
     """
     视频下at信息回复机器人
     监听：@消息
@@ -52,6 +56,9 @@ class VideoCommentUP(base.Uploader, Auth):
     :param compress_mode: 请求GPT 压缩视频文案方式
         - random：随机跳跃筛选
         - left：从左到右
+
+    :param prompt_temple:  assistant提示词模板
+    :param reply_temple:  评论回复模板
 
     :param listeners:  感知
     :param concurrent_num:  并发数
@@ -71,18 +78,14 @@ class VideoCommentUP(base.Uploader, Auth):
     :param mq:  通信队列
     """
     up_sleep: int = 5
-    system: str = "你是一个会评论视频B站用户，请根据视频内容做出总结、评论"
+    system: str = "你是一位B站用戶，请你锐评我给你的视频！"
     signals: Optional[List[str]] = ['总结一下']
-
-    limit_video_seconds: Optional[int] = 60 * 60 * 1
-    limit_token: Union[int, str, None] = None
-    limit_length: Optional[int] = None
-    compress_mode: Literal['random', 'left'] = 'random'
 
     prompt_temple: str = (
         '视频内容如下\n'
-        '标题:{title}'
-        '{summary}'
+        '###\n'
+        '{summary}\n'
+        '###'
     )
 
     reply_temple: str = (
@@ -91,26 +94,24 @@ class VideoCommentUP(base.Uploader, Auth):
         '由@{nickname}召唤。'
     )  # answer: brain回复；nickname：发消息用户昵称
 
-    summary_generator: Optional[converts.SummaryGenerator] = None
+    # 新版本官方提供了总结接口
+    # limit_video_seconds: Optional[int] = 60 * 60 * 1
+    # limit_token: Union[int, str, None] = None
+    # limit_length: Optional[int] = None
+    # compress_mode: Literal['random', 'left'] = 'random'
+    # summary_generator: Optional[converts.SummaryGenerator] = None
+
     aid_record_map: dict = {}
 
     def _init(self):
         config.log['handlers'].append('file')
         self.signals = self.signals
-        self.get_auth()
-        if not (self.limit_token or self.limit_length):
-            self.limit_token = self.model_name
-        self.summary_generator = converts.SummaryGenerator(
-            limit_token=self.limit_token,
-            limit_length=self.limit_length,
-            compress_mode=self.compress_mode
-        )
         self.aid_record_map = {
             int(record_dict['listener_kwargs']['aid']): Record(**record_dict) for record_dict in self.query()
         }
 
     def get_listeners(self):
-        return [listener.SessionAtListener()]
+        return [listener.SessionAtListener(credential=self.auth)]
 
     async def execute_sop(self, schema: listener.SessionSchema) -> Optional[reaction.CommentReaction]:
         self.logger.info(f'step0:收到schema:{schema.source_content}')
@@ -125,23 +126,12 @@ class VideoCommentUP(base.Uploader, Auth):
 
         # 获取summary
         video = Video(aid=schema.aid, credential=config.credential)
-        video_content_list = await converts.Audio2Text.from_bilibili_video(video)
-        view = video.info
         self.logger.info('step1:获取summary')
-
-        # 过滤
-        self.logger.info('step2:过滤')
-        if self.limit_video_seconds and view.duration > self.limit_video_seconds:
-            self.logger.info(f'过滤,视频时长超出限制:{view.duration}')
-            return
-        if not video_content_list:
-            self.logger.error('查找字幕资源失败')
-            return
-        summary = self.summary_generator.generate(video_content_list)
+        summary = await video.get_md_summary()
 
         # 请求GPT
-        prompt = self.prompt_temple.format(summary=summary, title=view.title)
-        self.logger.info(f'step3:请求GPT-prompt:{prompt[:10]}...{prompt[-10:]}')
+        prompt = self.prompt_temple.format(summary=summary)
+        self.logger.info(f'step2:请求GPT-prompt:{prompt[:10]}...{prompt[-10:]}')
         answer = await self.brain.arun(prompt)
         content = self.reply_temple.format(
             answer=answer,
@@ -155,7 +145,7 @@ class VideoCommentUP(base.Uploader, Auth):
         )
 
 
-class VtuBer(base.Uploader, Auth):
+class VtuBer(BilibiliUP):
     """
     bilibili直播数字人
     监听：直播间消息
@@ -185,7 +175,6 @@ class VtuBer(base.Uploader, Auth):
     :param brain:  含有run方法的类
     :param mq:  通信队列
     """
-
     system: str = '你是一个Bilibili主播'
     safe_system: str = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
     room_id: int
@@ -211,8 +200,6 @@ class VtuBer(base.Uploader, Auth):
     ban_word_filter: Any = None
 
     def _init(self):
-        # auth覆盖
-        self.get_auth()
         # 过滤
         if self.is_filter and not self.ban_word_filter:
             self.ban_word_filter = filters.BanWordsFilter(extra_ban_words=self.extra_ban_words)
@@ -222,7 +209,7 @@ class VtuBer(base.Uploader, Auth):
         return super().get_brain()
 
     def get_listeners(self):
-        listeners = [listener.LiveListener(room_id=self.room_id)]
+        listeners = [listener.LiveListener(room_id=self.room_id, credential=self.auth)]
         if self.user_input:
             listeners.append(listener.ConsoleListener())
         return listeners
@@ -236,7 +223,7 @@ class VtuBer(base.Uploader, Auth):
     def execute_sop(
             self,
             schema: Union[dict, listener.UserSchema]
-    ) -> Union[None, reaction.TTSSpeakReaction]:
+    ):
         if isinstance(schema, listener.UserSchema):
             schema = self.console_2_live(schema)
         self.logger.info(f"收到消息，准备回复:{schema.get('text') or str(schema)}")
@@ -272,16 +259,12 @@ class VtuBer(base.Uploader, Auth):
             SubtitleWindow.start()
 
 
-class ChatUP(base.Uploader, Auth):
+class ChatUP(BilibiliUP):
     system: str = '你是一位聊天AI助手'
     event_name_list: List[EventName] = [EventName.TEXT]
 
-    def _init(self):
-        # auth覆盖
-        self.get_auth()
-
     def get_listeners(self) -> List[Listener]:
-        return [listener.ChatListener(event_name_list=self.event_name_list)]
+        return [listener.ChatListener(event_name_list=self.event_name_list, credential=self.auth)]
 
     def execute_sop(self, schema: ChatEvent) -> Union[Reaction, List[Reaction]]:
         answer = self.brain.run(schema.content)

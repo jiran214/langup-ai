@@ -1,5 +1,5 @@
 import threading
-from typing import Callable, Literal, Any
+from typing import Callable, Literal, Any, ClassVar
 
 from apscheduler.schedulers.blocking import BlockingScheduler
 from pydantic import Field
@@ -17,7 +17,7 @@ class JobScheduler(base.Listener):
     trigger: Literal['date', 'interval', 'cron']
     sche_kwargs: dict
     callback: Callable = Field(description='Callback输出会传到up')
-    Schema: Any = None
+    Schema: ClassVar = None
 
     def init(self, mq, listener_sleep=None):
         SchedulerMaster.add_job(func=self.scheduler_callback, trigger=self.trigger, **self.sche_kwargs)

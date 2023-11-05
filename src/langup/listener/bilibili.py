@@ -1,7 +1,8 @@
+import abc
 import enum
-from typing import Optional, Type, List, Union
+from typing import Optional, Type, List, Union, ClassVar
 
-from bilibili_api import Picture
+from bilibili_api import Picture, Credential
 from bilibili_api.session import Event
 from pydantic import BaseModel
 
@@ -22,13 +23,22 @@ class SessionSchema(BaseModel):
     at_time: int
 
 
-class SessionAtListener(base.Listener):
+class BiliBiliListener(base.Listener, abc.ABC):
+    credential: Credential
+
+    def check(self):
+        self.credential.raise_for_no_sessdata()
+        self.credential.raise_for_no_buvid3()
+        self.credential.check_valid()
+
+
+class SessionAtListener(BiliBiliListener):
     listener_sleep: int = 60 * 2
     newest_at_time: int = 0
-    Schema: Type[SessionSchema] = SessionSchema
+    Schema: ClassVar = SessionSchema
 
     async def _alisten(self):
-        sessions = await api.bilibili.session.get_at(config.credential)
+        sessions = await api.bilibili.session.get_at(self.credential)
         items = sessions['items']
         schema_list = []
         for item in items[::-1]:
@@ -57,15 +67,15 @@ class SessionAtListener(base.Listener):
         return schema_list
 
 
-class LiveListener(base.Listener):
+class LiveListener(BiliBiliListener):
     room_id: int
     max_size: int = 20
-    Schema: dict = {}  # text type ...
+    Schema: ClassVar = {}  # text type ...
     live_mq: Optional[MQ] = None
 
     def init(self, mq, listener_sleep=None):
         self.live_mq = base.SimpleMQ(maxsize=self.max_size)
-        room = api.bilibili.live.BlLiveRoom(self.room_id, self.live_mq, config.credential)
+        room = api.bilibili.live.BlLiveRoom(self.room_id, self.live_mq, self.credential)
         t = start_thread(room.connect)
         super().init(mq, listener_sleep)
 
@@ -101,17 +111,17 @@ class ChatEvent(BaseModel):
     uid: int
 
 
-class ChatListener(base.Listener):
+class ChatListener(BiliBiliListener):
     event_name_list: List[EventName]
 
-    Schema: Type[Event] = ChatEvent
+    Schema: ClassVar = ChatEvent
     listener_sleep: int = 6
     max_size: Optional[int] = 0
     session_mq: Optional[MQ] = None
 
     def init(self, mq: MQ, listener_sleep: Optional[int] = 0):
         self.session_mq = base.SimpleMQ(maxsize=self.max_size)
-        s = api.bilibili.session.ChatSession(credential=config.credential, mq=self.session_mq)
+        s = api.bilibili.session.ChatSession(credential=self.credential, mq=self.session_mq)
         s.register_handlers([event_name.value for event_name in self.event_name_list])
         t = start_thread(s.connect)
         super().init(mq, listener_sleep)

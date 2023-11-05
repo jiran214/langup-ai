@@ -81,7 +81,7 @@ from langup import config, VideoCommentUP
 up = VideoCommentUP(
     up_sleep=10,  # 生成回复间隔事件
     listener_sleep=60 * 2,  # 2分钟获取一次@消息
-    system="你是一个会评论视频B站用户，请根据视频内容做出总结、评论",
+    system="你是一位B站用戶，请你锐评我给你的视频！",
     signals=['总结一下'],
     openai_api_key='xxx',
     model_name='gpt-3.5-turbo',
@@ -100,19 +100,25 @@ up.loop()
 """
 视频下at信息回复机器人
 :param credential: bilibili认证
-:param model_name: openai MODEL
+:param prompt_temple:  assistant提示词模板
+:param reply_temple:  评论回复模板
+:param model_name: openai 模型名称
 :param signals:  at暗号列表 （注意：B站会过滤一些词）
+:param up_sleep: 每次回复的间隔运行时间(秒)
+:param listener_sleep: listener 每次读取@消息的间隔运行时间(秒)
+...见更多配置
+"""
+```
+
+v-0.0.11更新: 对接了官方新上线AI总结接口，以下参数已弃用
+```text
 :param limit_video_seconds: 过滤视频长度 
 :param limit_token: 请求GPT token限制（默认为model name）
 :param limit_length: 请求GPT 字符串长度限制
 :param compress_mode: 请求GPT 压缩过长的视频文字的方式
     - random：随机跳跃筛选
     - left：从左到右
-    
-:param up_sleep: 每次回复的间隔运行时间(秒)
-:param listener_sleep: listener 每次读取@消息的间隔运行时间(秒)
-...见更多配置
-"""
+    - summary: (ai总结待实现)
 ```
 </details>
 
@@ -282,6 +288,7 @@ welcome_tip = True
     - [X] 并发
   - VideoCommentUP
     - [X] 基本功能
+    - [X] 对接官方AI总结
   - UserInputUP
     - [X] 基本功能
     - [X] 语音识别

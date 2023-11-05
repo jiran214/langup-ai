@@ -75,3 +75,20 @@ class BiliNote(BaseModel):
     Tags: List[BiliNoteTag]
     # 推荐视频信息
     # Related: List[BiliNoteView]
+
+
+class PartOutlineItem(BaseModel):
+    timestamp: int
+    content: str
+
+
+class OutlineItem(BaseModel):
+    title: str
+    part_outline: List[PartOutlineItem]
+    timestamp: int
+
+
+class NoteAISummary(BaseModel):
+    result_type: int
+    summary: str
+    outline: List[OutlineItem]
