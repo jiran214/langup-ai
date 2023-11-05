@@ -17,7 +17,7 @@
   ```shell
   git clone https://github.com/jiran214/langup-ai.git
   cd langup-ai/
-  python -m pip install –upgrade pip
+  python -m pip install --upgrade pip
   python -m pip install -r requirements.txt
   ```
   
