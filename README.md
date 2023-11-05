@@ -213,7 +213,7 @@ config.xxx = xxx
 """
 import os
 
-VERSION = '0.0.10'
+VERSION = '0.0.11'
 credential = None
 work_dir = './'
 
