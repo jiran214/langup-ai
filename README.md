@@ -60,6 +60,7 @@ bilibili直播数字人参数：
 :param room_id:  bilibili直播房间号
 :param credential:  bilibili 账号认证
 :param is_filter: 是否开启过滤
+:param subtitle: 是否开启字幕
 :param user_input: 是否开启终端输入
 :param extra_ban_words: 额外的违禁词
 
@@ -192,6 +193,7 @@ Uploader 所有公共参数：
 
 :param brain:  含有run方法的类
 :param mq:  通信队列
+:param use_reaction_lock: 同步运行reactions
 """
 ```
 
@@ -204,11 +206,13 @@ form langup import config
 config.xxx = xxx
 """
 import os
-from typing import Union
 
-credential: Union['Credential', None] = None
+VERSION = '0.0.10'
+credential = None
 work_dir = './'
 
+
+# 声音配置
 tts = {
     "voice": "zh-CN-XiaoyiNeural",
     "rate": "+0%",
@@ -216,20 +220,42 @@ tts = {
     "voice_path": 'voice/'
 }
 
+# 日志配置
 log = {
-    "handlers": ["console"],  # console打印, file文件存储
+    "handlers": ["console"],  # console打印日志到控制台, file文件存储
     "file_path": "logs/"
 }
 
+# 语音识别
 convert = {
-    "audio_path": "audio/"
+    "audio_path": "audio/",
+    # SpeechRecognition Module
+    "speech_rec": {
+        # 常用的
+        'phrase_threshold': 1.2,  # 在我们将说话音频视为短语之前的最小说话秒数 - 低于此值的将被忽略（用于过滤点击声和爆音）
+        'energy_threshold': 1300,  # 最小音频能量以进行录制
+
+        'adjust_for_ambient_noise': False,  # 噪声调节energy_threshold
+        'dynamic_energy_threshold': False,  # 动态调节energy_threshold
+        'dynamic_energy_adjustment_damping': 0.15,
+        'dynamic_energy_ratio': 1.5,
+        'pause_threshold': 0.8,  # 在一个短语被认为完成之前的无语音音频秒数
+        'operation_timeout': None,  # 内部操作（例如 API 请求）开始后超时的秒数，或 ``None`` 表示没有超时限制
+        'non_speaking_duration': 0.5  # 录制两侧的无语音音频秒数
+    }
 }
+
+# 字幕控件
+subtitle = {'text_color': "#fa9a19", 'font': ("SimHei", 40)}
 
 root = os.path.dirname(__file__)
 openai_api_key = None  # sk-...
 openai_api_base = None  # https://{your_domain}/v1
 proxy = None  # 代理
-debug = True
+debug = False
+
+test_net = True
+welcome_tip = True
 ```
 </details>
 更多机器人开发中...
@@ -259,12 +285,15 @@ debug = True
   - UserInputUP
     - [X] 基本功能
     - [X] 语音识别
+  - ChatUP
+    - [x] 基本功能
 - Listener
   - [X] 语音识别
   - [ ] 微信
   - [ ] Bilibili 私信
   - [ ] QQ
 - Reaction
+  - 字幕
 - 其它
   - 日志记录
   - pydantic重构部分类

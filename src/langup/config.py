@@ -11,6 +11,7 @@ VERSION = '0.0.10'
 credential: Union['Credential', None] = None
 work_dir = './'
 
+# 声音配置
 tts = {
     "voice": "zh-CN-XiaoyiNeural",
     "rate": "+0%",
@@ -18,10 +19,13 @@ tts = {
     "voice_path": 'voice/'
 }
 
+# 日志配置
 log = {
     "handlers": ["console"],  # console打印日志到控制台, file文件存储
     "file_path": "logs/"
 }
+
+# 语音识别
 convert = {
     "audio_path": "audio/",
     # SpeechRecognition Module
@@ -40,6 +44,8 @@ convert = {
     }
 }
 
+# 字幕控件
+subtitle = {'text_color': "#fa9a19", 'font': ("SimHei", 35, 'bold')}
 
 root = os.path.dirname(__file__)
 openai_api_key = None  # sk-...

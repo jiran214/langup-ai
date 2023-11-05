@@ -6,6 +6,7 @@ import threading
 import time
 from asyncio import iscoroutine
 from datetime import datetime
+from typing import ClassVar
 
 import bilibili_api
 import openai
@@ -61,7 +62,7 @@ class InitMixin:
         self.logger = get_logging_logger(file_name=self.__class__.__name__)
         # 环境变量读取
         is_load = load_dotenv(verbose=True)
-        print(f'读取.env文件变量:{str(is_load)}')
+        self.logger.info(f'读取.env文件变量:{str(is_load)}')
         credential = Credential(
             sessdata=os.environ.get('sessdata'),
             bili_jct=os.environ.get('bili_jct'),
@@ -90,9 +91,9 @@ class InitMixin:
         # key 配置
         config.openai_api_key = config.openai_api_key or self.openai_api_key or openai.api_key or os.environ.get('OPENAI_API_KEY')
         openai.api_key = config.openai_api_key
-        self.check()
         if config.welcome_tip:
             format_print(consts.WELCOME, color='green')
+        self.check()
 
 
 class Logger:
@@ -127,7 +128,9 @@ class Logger:
                 raise Exception(f'Record文件:{self.record_path}序列化失败,请确认是否手动修修改过\n{e}')
 
 
-class Looper:
+class Looper(BaseModel):
+    use_reaction_lock: bool = False
+    reaction_lock: ClassVar = threading.Lock()
 
     async def wait(self: 'base.Uploader'):
         while 1:
@@ -144,7 +147,12 @@ class Looper:
                 # execute_sop 返回空代表过滤
                 if reactions is None:
                     continue
-                await self.handle_reaction(t0, schema, reactions)
+                if self.use_reaction_lock:
+                    # 多线程up运行，reaction同步进行
+                    with self.reaction_lock:
+                        await self.handle_reaction(t0, schema, reactions)
+                else:
+                    await self.handle_reaction(t0, schema, reactions)
 
     async def handle_reaction(self: 'base.Uploader', t0, schema, reactions):
         reaction_instance_list = get_list(reactions)

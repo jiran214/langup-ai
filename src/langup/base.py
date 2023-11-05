@@ -4,19 +4,15 @@ import abc
 import asyncio
 import queue
 
-import time
-from asyncio import iscoroutine
 from logging import Logger
-from typing import List, Optional, Callable, Union, Any, Type
+from typing import List, Optional, Callable, Union, Any
 
-from bilibili_api import sync
 from langchain.chat_models import ChatOpenAI
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
 
 from langup import config, BrainType
 from langup.brain.chains.llm import get_llm_chain
 from langup.utils import mixins
-from langup.utils.utils import get_list, start_thread
 
 
 class MQ(abc.ABC):
@@ -90,6 +86,9 @@ class Reaction(BaseModel, abc.ABC):
     @abc.abstractmethod
     async def areact(self):
         ...
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class LLM(BaseModel):
@@ -165,7 +164,7 @@ class Uploader(
 
     def init(self):
         self.init_config()
-        self.brain = self.chain or self.get_brain()
+        self.brain = self.brain or self.get_brain()
         self.listeners = self.listeners + self.get_listeners()
         self._init()
 

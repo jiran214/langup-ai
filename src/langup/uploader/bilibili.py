@@ -9,6 +9,7 @@ from langup import reaction
 from langup.api.bilibili.video import Video
 from langup.base import Reaction, Listener
 from langup.listener.bilibili import EventName, ChatEvent
+from langup.reaction.subtitle import SubtitleWindow
 from langup.utils import enums, filters, converts, utils
 from langup.utils.utils import Record
 
@@ -26,9 +27,10 @@ class Auth(BaseModel):
             print(f'未发现credential-准备读取浏览器自动获取Cookie...')
             cookie_dict = utils.get_cookies(domain_name='bilibili.com', browser=self.browser)
             self.credential = cookie_dict
-        # auth覆盖
-        attrs = ['sessdata', 'bili_jct', 'buvid3', 'dedeuserid', 'ac_time_value']
-        config.credential = Credential(**{attr: self.credential.get(attr, None) for attr in attrs})
+        elif self.credential:
+            # auth覆盖
+            attrs = ['sessdata', 'bili_jct', 'buvid3', 'dedeuserid', 'ac_time_value']
+            config.credential = Credential(**{attr: self.credential.get(attr, None) for attr in attrs})
         assert config.credential.buvid3, '缺少buvid3，请检查登录状态'
         assert config.credential.sessdata, '缺少sessdata，请检查登录状态'
 
@@ -161,6 +163,7 @@ class VtuBer(base.Uploader, Auth):
     反应：语音回复
     :param room_id:  bilibili直播房间号
     :param credential:  bilibili 账号认证
+    :param subtitle: 是否开启字幕
     :param is_filter: 是否开启过滤
     :param user_input: 是否开启终端输入
     :param extra_ban_words: 额外的违禁词
@@ -186,8 +189,6 @@ class VtuBer(base.Uploader, Auth):
     system: str = '你是一个Bilibili主播'
     safe_system: str = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
     room_id: int
-    is_filter: bool = True
-    user_input: bool = False
     audio_temple: dict = {
         enums.LiveInputType.danmu: (
             '{user_name}说:{text}'
@@ -200,7 +201,12 @@ class VtuBer(base.Uploader, Auth):
             '{answer}。'
         )
     }
+    use_reaction_lock: bool = True
 
+    """扩展"""
+    subtitle: bool = False
+    is_filter: bool = True
+    user_input: bool = False
     extra_ban_words: Optional[List[str]] = None
     ban_word_filter: Any = None
 
@@ -254,7 +260,16 @@ class VtuBer(base.Uploader, Auth):
             self.logger.warning(f'包含违禁词-{audio_txt}-{words}')
             return
         schema['type'] = schema['type'].value
-        return reaction.TTSSpeakReaction(audio_txt=audio_txt, block=True)
+        reactions = [reaction.TTSSpeakReaction(audio_txt=audio_txt)]
+        if self.subtitle:
+            reactions.append(reaction.SubtitleReaction(subtitle_txt=audio_txt))
+        return reactions
+
+    def loop(self, block=True):
+        super().loop(block=not self.subtitle)
+        self.logger.info('字幕已开启')
+        if self.subtitle:
+            SubtitleWindow.start()
 
 
 class ChatUP(base.Uploader, Auth):
