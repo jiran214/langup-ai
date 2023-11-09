@@ -8,7 +8,6 @@ from langup.api.bilibili import comment
 
 
 class CommentReaction(base.Reaction):
-
     aid: int
     content: str
 

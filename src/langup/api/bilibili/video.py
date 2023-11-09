@@ -17,7 +17,6 @@ session.headers = {
     'origin': "https://www.bilibili.com",
 }
 session.trust_env = False
-summary_url = """https://api.bilibili.com/x/web-interface/view/conclusion/get?bvid={bvid}&cid={cid}&up_mid={up_mid}&web_location=333.788&w_rid=ca1bc55d2d8962628d0618929bbc7e44&wts=1699194592"""
 
 
 def trans_time(timestamp):
@@ -91,23 +90,8 @@ class Video(video.Video):
 
     async def get_ai_summary(self, page_index=0):
         """获取AI总结"""
-        self.credential.raise_for_no_sessdata()
-        self.credential.raise_for_no_buvid3()
-
-        if self.__summary_info:
-            return self.__summary_info
-        if not self.__info:
-            await self.get_info()
-        url = summary_url.format(
-            bvid=self.get_bvid(),
-            cid=await self.get_cid(page_index=page_index),
-            up_mid=self.info.owner['mid']
-        )
-        r = session.get(url, cookies=self.credential.get_cookies())
-        r.raise_for_status()
-        json_data = r.json()
-        assert json_data['code'] == 0
-        self.__summary_info = NoteAISummary(**json_data['data']['model_result'])
+        json_data = await self.get_ai_conclusion(page_index=page_index)
+        self.__summary_info = NoteAISummary(**json_data['model_result'])
         return self.__summary_info
 
     async def get_md_summary(self):
@@ -131,8 +115,8 @@ class Video(video.Video):
                 for part_item in outline_item.part_outline
             ])
         md = md.format(
-            title=self.__bn_info.title,
-            author=self.__bn_info.owner['name'],
+            title=self.info.title,
+            author=self.info.owner['name'],
             summary=self.__summary_info.summary,
             outlines=outlines
         )
@@ -140,8 +124,5 @@ class Video(video.Video):
 
 
 if __name__ == '__main__':
-    # config.proxy = '1'
     v = Video(bvid='BV1wj411y7pq')
     print(sync(v.get_md_summary()))
-    # sync(v.get_info())
-    # print(v.info)
