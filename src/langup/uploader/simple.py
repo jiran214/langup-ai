@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 from typing import Literal, Optional
 
+from bilibili_api import sync
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import chain, RunnablePassthrough
 from pydantic import Field
 
-from langup import base, reaction, listener
+from langup import listener, core, LLMChain, apis
 from langup.utils import utils
 
 _user_listener_map = {
@@ -13,55 +16,30 @@ _user_listener_map = {
 }
 
 
-class UserInputReplyUP(base.Uploader):
-    """
-    终端回复助手
-    :param listen:  用户输入源
-        - console 终端
-        - speech 语音
-    :param listeners:  感知
-    :param concurrent_num:  并发数
-    :param system:   人设
-
-    :param openai_api_key:  openai秘钥
-    :param openai_proxy:   http代理
-    :param openai_api_base:  openai endpoint
-    :param temperature:  gpt温度
-    :param max_tokens:  gpt输出长度
-    :param chat_model_kwargs:  langchain chatModel额外配置参数
-    :param llm_chain_kwargs:  langchain chatChain额外配置参数
-
-    :param brain:  含有run方法的类
-    :param mq:  通信队列
-    """
-    up_sleep: int = Field(default=0)
+class UserInputReplyUP(core.Langup):
     name: str = 'AI'
-    system: str = Field(default='你是一位AI助手')
-    temple: str = '{answer}。'
+    interval = 2
+    system: str = '你是一位AI助手'
     listen: Literal['console', 'speech']
 
-    def _init(self):
-        pass
+    @staticmethod
+    @chain
+    async def react(_dict):
+        utils.format_print(f"{_dict['name']}: {_dict['output']}", color='green')
+        await apis.voice.tts_speak(audio_txt=_dict['output'])
+        _dict['listener'].user_event.set()
 
-    def init(self):
-        listener.ConsoleListener.clear_console()
-        super().init()
-
-    def get_listeners(self):
+    def run(self):
         user_listener = _user_listener_map[self.listen]()
-        user_listener.user_event.set()
-        user_listener.clear_console()
-        return [user_listener]
-
-    def callback(self):
-        if self.listeners[0] is listener.SpeechListener:
-            listener.SpeechListener.user_event.set()
-            self.logger.debug('callback set')
-
-    def execute_sop(self, schema):
-        utils.format_print('thinking...')
-        answer = self.brain.run(schema.user_input)
-        utils.format_print(f"{self.name}: {answer}", color='green')
-        if self.listeners[0] is listener.ConsoleListener:
-            listener.ConsoleListener.user_event.set()
-        return reaction.TTSSpeakReaction(audio_txt=answer)
+        runer = core.RunManager(
+            listener=user_listener,
+            interval=self.interval,
+            extra_inputs={'name': self.name, 'listen': self.listen, 'listener': user_listener},
+            chain=(
+                LLMChain(self.system, self.human)
+                | StrOutputParser()
+                | self.react
+            ),
+        )
+        runer.listener.user_event.set()
+        sync(runer.arun())

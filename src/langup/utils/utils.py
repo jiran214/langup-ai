@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-]
+import abc
 import copy
 import functools
+import queue
 import threading
 from asyncio import iscoroutinefunction
 from http.cookiejar import CookieJar
-from typing import Optional, Any, Literal, Callable
+from typing import Optional, Any, Literal, Callable, List, Union
 import browser_cookie3
 from bilibili_api import sync
-
 from pydantic import BaseModel
+
+from langup import config
 
 color_map = {
     "black": "30",
@@ -47,6 +50,8 @@ class DFA:
         self.state_event_dict = self._generate_state_event_dict(keyword_list)
 
     def match(self, content: str):
+        if not content:
+            return
         match_list = []
         state_list = []
         temp_match_list = []
@@ -112,19 +117,14 @@ class DFA:
         return state_event_dict
 
 
-class Record(BaseModel):
-    """存档、日志"""
-    listener_kwargs: Optional[Any] = None
-    react_kwargs: Optional[dict] = None
-    time_cost: Optional[str] = None
-    created_time: Optional[str] = None
+class Continue(Exception):
+    pass
 
 
 def format_print(text: str, color: str = 'white', style: str = 'normal', end='\n'):
 
     color_code = color_map.get(color, "39")
     style_code = style_map.get(style, "0")
-
     print(f"\033[{style_code};{color_code}m{text}\033[0m", end=end)
 
 
@@ -173,3 +173,47 @@ def start_thread(job: Callable):
     t = threading.Thread(target=sync_job)
     t.start()
     return t
+
+
+@singleton
+class BanWordsFilter(DFA):
+    default_path = config.root + '/data/ban_words.txt'
+
+    def __init__(self, file_path_list=None, extra_ban_words: Optional[List[str]] = None):
+        file_path_list = (file_path_list or []) + [self.default_path]
+        keyword_list = []
+        for path in file_path_list:
+            keyword_list += [
+                line.strip()
+                for line in open(file=path, encoding='utf-8', mode='r').readlines()
+            ]
+        keyword_list.extend(extra_ban_words or [])
+        super().__init__(keyword_list)
+
+
+class MQ(abc.ABC):
+    """Listener和Uploader通信"""
+
+    @abc.abstractmethod
+    def send(self, schema):
+        ...
+
+    @abc.abstractmethod
+    def recv(self) -> Any:
+        ...
+
+    @abc.abstractmethod
+    def empty(self):
+        return
+
+
+class SimpleMQ(queue.Queue, MQ):
+
+    def recv(self) -> Union[BaseModel, dict]:
+        return self.get()
+
+    def send(self, schema):
+        # 设置maxsize淘汰旧消息
+        if self.maxsize != 0 and self.qsize() == self.maxsize:
+            self.get()
+        self.put(schema)

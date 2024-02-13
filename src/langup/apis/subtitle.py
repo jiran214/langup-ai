@@ -27,7 +27,6 @@ class SubtitleWindow:
             subtitle_queue, text_color="#ffffff", font=("SimHei", 35, 'bolda'),
             window_width=None, window_height=600, transparent_level=0.5, bg_color="#000000"):
         """
-
         @param subtitle_queue:
         @param window_width:
         @param window_height:

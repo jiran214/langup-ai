@@ -9,8 +9,8 @@ import tiktoken
 from speech_recognition import UnknownValueError
 
 from langup import config
-from langup.api.bcut_asr import get_audio_text_by_bcut
-from langup.api.bilibili.video import Video
+from langup.apis.bcut_asr import get_audio_text_by_bcut
+from langup.apis.bilibili.video import Video
 from langup.utils import consts
 
 #  pip install SpeechRecognition
@@ -65,7 +65,6 @@ class Speech2Audio:
 
 
 class SummaryGenerator:
-    encoding = tiktoken.get_encoding('cl100k_base')
 
     def __init__(
             self,
@@ -76,6 +75,7 @@ class SummaryGenerator:
         assert limit_token or limit_length, '请提供限制条件'
         if limit_token and isinstance(limit_token, str):
             limit_token = consts.model_token[limit_token]
+        self.encoding = tiktoken.get_encoding('cl100k_base')
         self.limit_token = limit_token and limit_token * 0.9
         self.limit_length = limit_length
         self.compress_mode = compress_mode

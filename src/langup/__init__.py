@@ -1,22 +1,19 @@
-from typing import Union, Callable
-
-
-from langup.config import VERSION
-
 try:
     from langchain.chains.base import Chain
-    BrainType = Union[Chain, Callable]
 except:
     # python版本和pydantic不兼容问题
     from pydantic.v1 import typing
     typing.evaluate_forwardref = lambda type_, globalns, localns: type_._evaluate(globalns, localns)
 
 
+from langup.chains import LLMChain
+from langup.config import VERSION
+from langup.core import Langup, RunManager
 from langup import config
 from langup.uploader.simple import UserInputReplyUP
-from langup.uploader.bilibili import VtuBer, VideoCommentUP, ChatUP
+from langup.uploader.bilibili import VideoCommentUP, VtuBer, ChatUP
+from langup.listener.bilibili import EventName
 from bilibili_api import Credential
-from bilibili_api.session import Event
 
 
 __version__ = VERSION
@@ -25,9 +22,11 @@ __version__ = VERSION
 __all__ = [
     'Credential',
     'config',
-    'BrainType',
-    'Event',
-    'base',
+    'EventName',
+
+    'LLMChain',
+    'Langup',
+    'RunManager',
 
     'VideoCommentUP',
     'UserInputReplyUP',

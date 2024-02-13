@@ -1,9 +1,7 @@
 from bilibili_api import Credential, sync, Picture
-from bilibili_api.session import Session, Event, get_at
+from bilibili_api.session import Session, Event, get_at, send_msg
 
-
-from langup.base import MQ
-from langup.utils.utils import async_wrapper
+from langup.utils.utils import async_wrapper, MQ
 
 
 class ChatSession(Session):

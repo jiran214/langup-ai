@@ -1,151 +1,101 @@
-import abc
-import functools
-import os
-from typing import Optional, Union, Literal, List, Any
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+import asyncio
+import logging
+import time
+from typing import Optional, List
+from pydantic import PrivateAttr
 
-from bilibili_api import Credential, sync
-from bilibili_api.session import Event
-from pydantic import Field, BaseModel
+from bilibili_api import sync, Picture
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough, RunnableParallel, RunnableLambda, chain, RunnableBranch
 
-from langup import base, config, listener, BrainType
-from langup import reaction
-from langup.api.bilibili.video import Video
-from langup.base import Reaction, Listener
-from langup.listener.bilibili import EventName, ChatEvent
-from langup.reaction.subtitle import SubtitleWindow
-from langup.utils import enums, filters, converts, utils
-from langup.utils.utils import Record
+from langup import core, listener, apis, config
+from langup.apis.bilibili import comment
+from langup.apis.bilibili.live import LiveInputType
+from langup.chains import LLMChain
+from langup.listener.bilibili import EventName
+from langup.utils.utils import Continue, BanWordsFilter
 
-
-class BilibiliUP(base.Uploader, abc.ABC):
-    credential: Optional[dict] = {}
-    browser: Optional[Literal[
-        'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
-        'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
-    ]] = Field(default='load', description='获取cookie的浏览器,默认全部检查一遍,建议手动设置')
-
-    @functools.cached_property
-    def auth(self) -> Credential:# auth覆盖
-        attrs = ['sessdata', 'bili_jct', 'buvid3', 'dedeuserid', 'ac_time_value']
-        # cookie获取
-        if not (self.credential or config.credential):
-            print(f'未发现credential-尝试从.env环境变量获取...')
-            cookie_dict = {attr: os.environ.get(attr, None) for attr in attrs}
-            if not (cookie_dict.get('sessdata') and cookie_dict.get('buvid3')):
-                print(f'未发现credential-尝试从浏览器获取...')
-                cookie_dict = utils.get_cookies(domain_name='bilibili.com', browser=self.browser)
-            self.credential = cookie_dict
-            config.credential = Credential(**{attr: self.credential.get(attr, None) for attr in attrs})
-        return config.credential
+logger = logging.getLogger('langup')
 
 
-class VideoCommentUP(BilibiliUP):
-    """
-    视频下at信息回复机器人
-    监听：@消息
-    思考：调用GPT回复消息
-    反应：评论视频
-
-    :param credential: bilibili认证
-    :param model_name: openai MODEL
-    :param signals:  at的暗号
-
-    :param limit_video_seconds: 过滤视频长度
-    :param limit_token: 请求GPT token限制（可输入model name）
-    :param limit_length: 请求GPT 字符串长度限制
-    :param compress_mode: 请求GPT 压缩视频文案方式
-        - random：随机跳跃筛选
-        - left：从左到右
-
-    :param prompt_temple:  assistant提示词模板
-    :param reply_temple:  评论回复模板
-
-    :param listeners:  感知
-    :param concurrent_num:  并发数
-    :param up_sleep: uploader 多少时间触发一次
-    :param listener_sleep: listener 多长时间触发一次
-    :param system:   人设
-
-    :param openai_api_key:  openai秘钥
-    :param openai_proxy:   http代理
-    :param openai_api_base:  openai endpoint
-    :param temperature:  gpt温度
-    :param max_tokens:  gpt输出长度
-    :param chat_model_kwargs:  langchain chatModel额外配置参数
-    :param llm_chain_kwargs:  langchain chatChain额外配置参数
-
-    :param brain:  含有run方法的类
-    :param mq:  通信队列
-    """
-    up_sleep: int = 5
-    system: str = "你是一位B站用戶，请你锐评我给你的视频！"
-    signals: Optional[List[str]] = ['总结一下']
-
-    prompt_temple: str = (
+class VideoCommentUP(core.Langup):
+    system: str = "你是一位B站用戶，请你锐评该视频！"
+    human: str = (
         '视频内容如下\n'
         '###\n'
         '{summary}\n'
         '###'
     )
-
+    interval: int = 5
+    signals: Optional[List[str]] = ['总结一下']
     reply_temple: str = (
         '{answer}'
         '本条回复由AI生成，'
         '由@{nickname}召唤。'
     )  # answer: brain回复；nickname：发消息用户昵称
-
     # 新版本官方提供了总结接口
-    # limit_video_seconds: Optional[int] = 60 * 60 * 1
-    # limit_token: Union[int, str, None] = None
-    # limit_length: Optional[int] = None
-    # compress_mode: Literal['random', 'left'] = 'random'
-    # summary_generator: Optional[converts.SummaryGenerator] = None
 
-    aid_record_map: dict = {}
-
-    def _init(self):
-        config.log['handlers'].append('file')
-        self.signals = self.signals
-        self.aid_record_map = {
-            int(record_dict['listener_kwargs']['aid']): Record(**record_dict) for record_dict in self.query()
-        }
-
-    def get_listeners(self):
-        return [listener.SessionAtListener(credential=self.auth)]
-
-    async def execute_sop(self, schema: listener.SessionSchema) -> Optional[reaction.CommentReaction]:
-        self.logger.info(f'step0:收到schema:{schema.source_content}')
+    @staticmethod
+    @chain
+    async def get_summary(_dict):
         if not any([
-            signal in schema.source_content for signal in self.signals
+            signal in _dict['source_content'] for signal in _dict['signals']
         ]):
-            self.logger.info(f'过滤,没有出现暗号:{schema.source_content}')
-            return
-        if schema.aid in self.aid_record_map:
-            self.logger.info(f'过滤,aid:{schema.aid}已经回复过')
-            return
-
+            logger.info(f"过滤,没有出现暗号:{_dict['source_content']}")
+            raise Continue
         # 获取summary
-        video = Video(aid=schema.aid, credential=config.credential)
-        self.logger.info('step1:获取summary')
+        video = apis.bilibili.video.Video(aid=_dict['aid'], credential=config.auth.credential)
+        logger.info('step1:获取summary')
         summary = await video.get_md_summary()
+        return {'summary': summary, **_dict}
 
-        # 请求GPT
-        prompt = self.prompt_temple.format(summary=summary)
-        self.logger.info(f'step2:请求GPT-prompt:{prompt[:10]}...{prompt[-10:]}')
-        answer = await self.brain.arun(prompt)
-        content = self.reply_temple.format(
-            answer=answer,
-            nickname=schema.user_nickname
+    @staticmethod
+    @chain
+    async def react(_dict):
+        content = _dict['reply_temple'].format(answer=_dict['output'], nickname=_dict['user_nickname'])
+        await comment.send_comment(text=content, type_=comment.CommentResourceType.VIDEO, oid=_dict['aid'], credential=config.auth.credential)
+
+    def run(self):
+        runer = core.RunManager(
+            listener=listener.SessionAtListener(),
+            interval=self.interval,
+            extra_inputs={'signals': self.signals, 'reply_temple': self.reply_temple},
+            chain=(
+                RunnablePassthrough.assign(summary=self.get_summary) |
+                RunnablePassthrough.assign(output=LLMChain(self.system, self.human) | StrOutputParser()) |
+                self.react
+            ),
         )
-        self.aid_record_map[schema.aid] = None
-        self.logger.info('end')
-        return reaction.CommentReaction(
-            aid=schema.aid,
-            content=content
+        sync(runer.arun())
+
+
+class ChatUP(core.Langup):
+
+    system: str = '你是一位聊天AI助手'
+    interval: int = 3
+    event_name_list: List[EventName] = [EventName.TEXT]
+
+    @staticmethod
+    @chain
+    async def react(_dict):
+        msg_type = EventName.PICTURE if isinstance(_dict['output'], Picture) else EventName.TEXT
+        await apis.bilibili.session.send_msg(config.credential, _dict['sender_uid'], msg_type.value, _dict['output'])
+
+    def run(self):
+        runer = core.RunManager(
+            listener=listener.ChatListener(event_name_list=self.event_name_list),
+            interval=self.interval,
+            chain=(
+                RunnablePassthrough.assign(output=LLMChain(self.system, self.human) | StrOutputParser()) |
+                self.react
+            ),
         )
+        sync(runer.arun())
 
 
-class VtuBer(BilibiliUP):
+class VtuBer(core.Langup):
     """
     bilibili直播数字人
     监听：直播间消息
@@ -179,93 +129,55 @@ class VtuBer(BilibiliUP):
     safe_system: str = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
     room_id: int
     audio_temple: dict = {
-        enums.LiveInputType.danmu: (
+        LiveInputType.danmu: (
             '{user_name}说:{text}'
-            '{answer}'
+            '{output}'
         ),
-        enums.LiveInputType.gift: (
+        LiveInputType.gift: (
             '感谢!{text}'
         ),
-        enums.LiveInputType.user: (
-            '{answer}。'
+        LiveInputType.user: (
+            '{output}。'
         )
     }
-    use_reaction_lock: bool = True
 
     """扩展"""
-    subtitle: bool = False
     is_filter: bool = True
-    user_input: bool = False
     extra_ban_words: Optional[List[str]] = None
-    ban_word_filter: Any = None
+    _ban_word_filter: Optional[BanWordsFilter] = PrivateAttr()
 
-    def _init(self):
-        # 过滤
-        if self.is_filter and not self.ban_word_filter:
-            self.ban_word_filter = filters.BanWordsFilter(extra_ban_words=self.extra_ban_words)
+    @staticmethod
+    @chain
+    async def react(_dict):
+        audio_temple = _dict['audio_temple'][_dict['type']]
+        audio_text = audio_temple.format(**_dict)
+        await apis.voice.tts_speak(audio_text)
 
-    def get_brain(self):
-        self.system = self.safe_system + self.system
-        return super().get_brain()
+    @staticmethod
+    @chain
+    def filter(_dict):
+        _filter: BanWordsFilter = _dict['filter']
+        check_keys = ('user_name', 'text', 'answer', 'output')
+        for key in check_keys:
+            content = _dict.get(key)
+            if kws := _filter.match(content):
+                raise Continue(f'包含违禁词:{content}/{kws}')
 
-    def get_listeners(self):
-        listeners = [listener.LiveListener(room_id=self.room_id, credential=self.auth)]
-        if self.user_input:
-            listeners.append(listener.ConsoleListener())
-        return listeners
-
-    def console_2_live(self, schema):
-        return {
-            'text': schema.user_input,
-            'type': enums.LiveInputType.user
-        }
-
-    def execute_sop(
-            self,
-            schema: Union[dict, listener.UserSchema]
-    ):
-        if isinstance(schema, listener.UserSchema):
-            schema = self.console_2_live(schema)
-        self.logger.info(f"收到消息，准备回复:{schema.get('text') or str(schema)}")
-        audio_kwargs = {**schema}
-        audio_temple = self.audio_temple[schema['type']]
-        if schema['type'] is not enums.LiveInputType.gift:
-            prompt = schema['text']
-            if self.ban_word_filter and (words := self.ban_word_filter.match(prompt)):
-                self.logger.warning(f'包含违禁词-{prompt}-{words}')
-                return
-            try:
-                audio_kwargs['answer'] = self.brain.run(prompt)
-            except Exception as e:
-                self.logger.error('请求GPT异常')
-                raise e
-        audio_txt = audio_temple.format(
-            **audio_kwargs
+    def run(self):
+        if self.is_filter:
+            self._ban_word_filter = BanWordsFilter(extra_ban_words=self.extra_ban_words)
+        self.system = f"{self.safe_system}\n{self.system}"
+        runer = core.RunManager(
+            listener=listener.LiveListener(room_id=self.room_id),
+            interval=self.interval,
+            extra_inputs={'filter': self._ban_word_filter, 'audio_temple': self.audio_temple},
+            chain=(
+                    RunnablePassthrough.assign(
+                        output=RunnableBranch(
+                            lambda x: x['type'] is not LiveInputType.gift,
+                            LLMChain(self.system, self.human) | StrOutputParser()
+                        ) | self.filter)
+                    | self.react
+            ),
         )
-        self.logger.info(f'生成回复：{audio_txt}')
-        if self.ban_word_filter and (words := self.ban_word_filter.match(audio_txt)):
-            self.logger.warning(f'包含违禁词-{audio_txt}-{words}')
-            return
-        schema['type'] = schema['type'].value
-        reactions = [reaction.TTSSpeakReaction(audio_txt=audio_txt)]
-        if self.subtitle:
-            reactions.append(reaction.SubtitleReaction(subtitle_txt=audio_txt))
-        return reactions
-
-    def loop(self, block=True):
-        super().loop(block=not self.subtitle)
-        self.logger.info('字幕已开启')
-        if self.subtitle:
-            SubtitleWindow.start()
-
-
-class ChatUP(BilibiliUP):
-    system: str = '你是一位聊天AI助手'
-    event_name_list: List[EventName] = [EventName.TEXT]
-
-    def get_listeners(self) -> List[Listener]:
-        return [listener.ChatListener(event_name_list=self.event_name_list, credential=self.auth)]
-
-    def execute_sop(self, schema: ChatEvent) -> Union[Reaction, List[Reaction]]:
-        answer = self.brain.run(schema.content)
-        return reaction.ChatReaction(content=answer, uid=schema.uid, sender_uid=schema.sender_uid)
+        sync(runer.arun())

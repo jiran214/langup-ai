@@ -7,8 +7,7 @@ from typing import Optional, List
 import httpx
 from bilibili_api import video, HEADERS, sync
 from requests import Session
-
-from langup.api.bilibili.schema import BiliNoteView, NoteAISummary
+from langup.apis.bilibili.schema import BiliNoteView, NoteAISummary
 
 session = Session()
 session.headers = {

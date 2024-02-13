@@ -1,13 +1,18 @@
 """
 全局配置，基本可以作为Uploader参数传入
 """
-import os
+import functools
 from typing import Union
+import asyncio
+import os
+from typing import Optional, Literal
 
 from bilibili_api import Credential
 
+from langup.utils import utils
 
-VERSION = '0.0.11'
+
+VERSION = '0.0.12'
 credential: Union['Credential', None] = None
 work_dir = './'
 
@@ -16,18 +21,12 @@ tts = {
     "voice": "zh-CN-XiaoyiNeural",
     "rate": "+0%",
     "volume": "+0%",
-    "voice_path": 'voice/'
-}
-
-# 日志配置
-log = {
-    "handlers": ["console"],  # console打印日志到控制台, file文件存储
-    "file_path": "logs/"
+    "voice_path": work_dir + 'voice/'
 }
 
 # 语音识别
 convert = {
-    "audio_path": "audio/",
+    "audio_path": work_dir + "audio/",
     # SpeechRecognition Module
     "speech_rec": {
         # 常用的
@@ -48,10 +47,45 @@ convert = {
 subtitle = {'text_color': "#fa9a19", 'font': ("SimHei", 35, 'bold')}
 
 root = os.path.dirname(__file__)
-openai_api_key = None  # sk-...
-openai_api_base = None  # https://{your_domain}/v1
-proxy = None  # 代理
-debug = False
 
-test_net = True
-welcome_tip = True
+
+class AuthManager:
+    credential: Optional[Credential] = None
+    openai_kwargs: dict = {}
+
+    def set_credential_from_browser(self, browser: Literal[
+        'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
+        'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
+    ]):
+        cookies = utils.get_cookies(domain_name='bilibili.com', browser=browser)
+        self.set_bilibili_config(**cookies)
+
+    def set_bilibili_config(self,
+            sessdata: str, buvid3: str, bili_jct: Optional[str] = None, dedeuserid: Optional[str] = None, ac_time_value: Optional[str] = None
+        ):
+        self.credential = Credential(sessdata=sessdata, buvid3=buvid3, bili_jct=bili_jct, dedeuserid=dedeuserid, ac_time_value=ac_time_value)
+
+    def set_openai_config(self, openai_api_key=None, openai_proxy=None, openai_api_base=None, **openai_kwargs):
+        os.environ.setdefault('OPENAI_API_KEY', openai_api_key)
+        openai_kwargs.update(openai_api_key=openai_api_key, openai_proxy=openai_proxy, openai_api_base=openai_api_base)
+        for key in openai_kwargs.keys():
+            if not openai_kwargs.get(key):
+                openai_kwargs.pop(key)
+        self.openai_kwargs.update(openai_kwargs)
+
+    @functools.cache
+    def check_bilibili_config(self):
+        self.credential.raise_for_no_sessdata()
+        self.credential.raise_for_no_buvid3()
+        asyncio.run(self.credential.check_valid())
+
+    @functools.cache
+    def check_openai_config(self):
+        assert os.environ.get('OPENAI_API_KEY')
+
+
+# 全局proxy，区别于openai_proxy
+proxy = None
+auth = AuthManager()
+test_net = False
+welcome_tip = False

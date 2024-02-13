@@ -9,43 +9,28 @@ import threading
 from typing import Type, ClassVar
 
 from pydantic import BaseModel, Field
-from langup import base, config
 
+import langup.core
 from speech_recognition import UnknownValueError
 
 from langup.utils import utils
 from langup.utils.converts import Audio2Text, Speech2Audio
 
 
-class UserSchema(BaseModel):
-    user_input: str
-
-
-class UserInputListener(base.Listener, abc.ABC):
+class UserInputListener(langup.core.Listener, abc.ABC):
     user_event: threading.Event = Field(default_factory=threading.Event)
-    listener_sleep: int = 0
-    Schema: ClassVar = UserSchema
 
     @abc.abstractmethod
     def get_input(self): ...
 
-    async def _alisten(self):
+    async def alisten(self) -> str:
         self.user_event.wait()
         user_input = self.get_input()
-        schema = self.Schema(user_input=user_input)
         self.user_event.clear()
-        return schema
-
-    @staticmethod
-    def clear_console():
-        from langup import config
-        """保持控制台干净"""
-        if config.log['handlers'] and ('console' in config.log['handlers']):
-            config.log['handlers'] = ['file']
+        return user_input
 
 
 class ConsoleListener(UserInputListener):
-
     def get_input(self):
         return str(input('You: '))
 

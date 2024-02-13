@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import asyncio
+import enum
 
 import httpx
 from bilibili_api import live
 
-from langup import base, config
-from langup.utils import enums
+import langup.utils.utils
+from langup import config
 
 
 async def on_danmaku(event_dict):
@@ -14,7 +15,7 @@ async def on_danmaku(event_dict):
         'text': event_dict['data']['info'][1],
         'user_name': event_dict['data']['info'][2][1],
         'time': event_dict['data']['info'][9]['ts'],
-        'type': enums.LiveInputType.danmu
+        'type': LiveInputType.danmu
     }
     return input_vars
 
@@ -27,7 +28,7 @@ async def on_gift(event_dict):
         'action': info['action'],
         'giftName': info['giftName'],
         'time': info['timestamp'],
-        'type': enums.LiveInputType.gift
+        'type': LiveInputType.gift
     }
     input_vars['text'] = f"{input_vars['user_name']}{input_vars['action']}了{input_vars['giftName']}"
     return input_vars
@@ -42,7 +43,7 @@ async def on_super_chat(event_dict):
         'text': info['message'],
         'price': info['price'],
         'time': info['start_time'],
-        'type': enums.LiveInputType.sc
+        'type': LiveInputType.sc
     }
     return input_vars
 
@@ -55,11 +56,11 @@ def event_wrap(func, mq):
 
 
 class BlLiveRoom:
-    def __init__(self, room_id, mq: base.MQ, credential):
+    def __init__(self, room_id, mq: langup.utils.utils.MQ):
         self.room = live.LiveDanmaku(
             room_display_id=int(room_id),
             # debug=config.debug,
-            credential=credential
+            credential=config.auth.credential
         )
         self.mq = mq
         self.add_event_listeners()
@@ -80,3 +81,11 @@ class BlLiveRoom:
             loop.run_until_complete(self.room.connect())
         except httpx.ConnectError:
             raise httpx.ConnectError('如果你开启代理遇到此异常，请导入并设置config.proxy = <your proxy>尝试解决该问题！')
+
+
+class LiveInputType(enum.Enum):
+    danmu = '弹幕'
+    gift = '礼物'
+    sc = 'sc'
+    scheduler = '调度任务'
+    user = 'user'

@@ -1,19 +1,29 @@
-import abc
 import enum
-from typing import Optional, Type, List, Union, ClassVar
-
-from bilibili_api import Picture, Credential
+from typing import Optional, Type, List, Union, ClassVar, Any, TypedDict
 from bilibili_api.session import Event
+from bilibili_api import bvid2aid
+
 from pydantic import BaseModel
 
-from langup import api, base, config
-from langup.api.bilibili.video import Video
-from langup.base import MQ
-from langup.utils import vid_transform
-from langup.utils.utils import start_thread
+import langup.core
+import langup.utils.utils
+from langup import apis, config
+from langup.utils.utils import start_thread, MQ
 
 
-class SessionSchema(BaseModel):
+def note_query_2_aid(note_query: str):
+    if note_query.startswith('BV'):
+        aid = bvid2aid(note_query)
+    elif note_query.startswith('https://www.bilibili.com/video/BV'):
+        bv = note_query.split('https://www.bilibili.com/video/')[1].split('/')[0]
+        aid = bvid2aid(bv)
+    else:
+        aid = note_query
+
+    return int(aid)
+
+
+class SessionSchema(TypedDict):
     user_nickname: str
     source_content: str
     uri: str
@@ -23,63 +33,60 @@ class SessionSchema(BaseModel):
     at_time: int
 
 
-class BiliBiliListener(base.Listener, abc.ABC):
-    credential: Credential
-
-    def check(self):
-        self.credential.raise_for_no_sessdata()
-        self.credential.raise_for_no_buvid3()
-        self.credential.check_valid()
-
-
-class SessionAtListener(BiliBiliListener):
-    listener_sleep: int = 60 * 2
+class SessionAtListener(langup.core.Listener):
     newest_at_time: int = 0
-    Schema: ClassVar = SessionSchema
+    aid_record_map: set = set()
 
-    async def _alisten(self):
-        sessions = await api.bilibili.session.get_at(self.credential)
+    def check_config(self):
+        config.auth.check_bilibili_config()
+
+    async def alisten(self) -> Optional[SessionSchema]:
+        sessions = await apis.bilibili.session.get_at(config.auth.credential)
         items = sessions['items']
+        if not items:
+            return
         schema_list = []
-        for item in items[::-1]:
-            at_type = item['item']['type']
-            if at_type != 'reply':
-                continue
-            at_time = item['at_time']
-            if at_time <= self.newest_at_time:
-                continue
-            user_nickname = item['user']['nickname']
-            source_content = item['item']['source_content']
-            uri = item['item']['uri']
-            source_id = item['item']['source_id']
-            bvid = "BV" + uri.split("BV")[1]
-            aid = vid_transform.note_query_2_aid(uri)
-            self.newest_at_time = at_time
-            schema_list.append(self.Schema(
-                user_nickname=user_nickname,
-                source_content=source_content,
-                uri=uri,
-                source_id=source_id,
-                bvid=bvid,
-                aid=aid,
-                at_time=at_time,
-            ))
-        return schema_list
+        item = items[-1]
+        at_type = item['item']['type']
+        if at_type != 'reply':
+            return
+        at_time = item['at_time']
+        if at_time <= self.newest_at_time:
+            return
+        user_nickname = item['user']['nickname']
+        source_content = item['item']['source_content']
+        uri = item['item']['uri']
+        source_id = item['item']['source_id']
+        bvid = "BV" + uri.split("BV")[1]
+        aid = note_query_2_aid(uri)
+        if aid in self.aid_record_map:
+            return
+        self.newest_at_time = at_time
+        schema = dict(
+            user_nickname=user_nickname,
+            source_content=source_content,
+            uri=uri,
+            source_id=source_id,
+            bvid=bvid,
+            aid=aid,
+            at_time=at_time,
+        )
+        self.aid_record_map.add(schema['aid'])
+        return schema
 
 
-class LiveListener(BiliBiliListener):
+class LiveListener(langup.core.Listener):
     room_id: int
     max_size: int = 20
-    Schema: ClassVar = {}  # text type ...
     live_mq: Optional[MQ] = None
 
-    def init(self, mq, listener_sleep=None):
-        self.live_mq = base.SimpleMQ(maxsize=self.max_size)
-        room = api.bilibili.live.BlLiveRoom(self.room_id, self.live_mq, self.credential)
+    def model_post_init(self, __context: Any) -> None:
+        config.auth.check_bilibili_config()
+        self.live_mq = langup.utils.utils.SimpleMQ(maxsize=self.max_size)
+        room = apis.bilibili.live.BlLiveRoom(self.room_id, self.live_mq)
         t = start_thread(room.connect)
-        super().init(mq, listener_sleep)
 
-    async def _alisten(self) -> dict:
+    async def alisten(self) -> dict:
         return self.live_mq.recv()
 
 
@@ -104,32 +111,25 @@ class EventName(enum.Enum):
     WELCOME = "306"
 
 
-class ChatEvent(BaseModel):
+class ChatEvent(TypedDict):
     # content: Union[str, int, Picture, Video]
     content: str
     sender_uid: int
     uid: int
 
 
-class ChatListener(BiliBiliListener):
+class ChatListener(langup.core.Listener):
     event_name_list: List[EventName]
-
-    Schema: ClassVar = ChatEvent
-    listener_sleep: int = 6
     max_size: Optional[int] = 0
     session_mq: Optional[MQ] = None
 
-    def init(self, mq: MQ, listener_sleep: Optional[int] = 0):
-        self.session_mq = base.SimpleMQ(maxsize=self.max_size)
-        s = api.bilibili.session.ChatSession(credential=self.credential, mq=self.session_mq)
+    def model_post_init(self, __context: Any) -> None:
+        config.auth.check_bilibili_config()
+        self.session_mq = langup.utils.utils.SimpleMQ(maxsize=self.max_size)
+        s = apis.bilibili.session.ChatSession(credential=config.auth.credential, mq=self.session_mq)
         s.register_handlers([event_name.value for event_name in self.event_name_list])
         t = start_thread(s.connect)
-        super().init(mq, listener_sleep)
 
-    async def _alisten(self):
+    async def alisten(self) -> ChatEvent:
         event: Event = self.session_mq.recv()
-        return ChatEvent(
-            sender_uid=event.sender_uid,
-            uid=event.uid,
-            content=event.content
-        )
+        return dict(sender_uid=event.sender_uid, uid=event.uid, content=event.content)
