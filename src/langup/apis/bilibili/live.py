@@ -8,6 +8,7 @@ from bilibili_api import live
 
 import langup.utils.utils
 from langup import config
+from langup.listener.schema import LiveInputType
 
 
 async def on_danmaku(event_dict):
@@ -83,9 +84,3 @@ class BlLiveRoom:
             raise httpx.ConnectError('如果你开启代理遇到此异常，请导入并设置config.proxy = <your proxy>尝试解决该问题！')
 
 
-class LiveInputType(enum.Enum):
-    danmu = '弹幕'
-    gift = '礼物'
-    sc = 'sc'
-    scheduler = '调度任务'
-    user = 'user'

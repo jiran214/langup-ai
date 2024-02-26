@@ -3,19 +3,18 @@
 import asyncio
 import logging
 import time
-from typing import Optional, List
-from pydantic import PrivateAttr
+from typing import Optional, List, Iterable
+from pydantic import PrivateAttr, Field
 
 from bilibili_api import sync, Picture
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, RunnableParallel, RunnableLambda, chain, RunnableBranch
 
-from langup import core, listener, apis, config
+from langup import core, listener, apis, config, EventName
 from langup.apis.bilibili import comment
-from langup.apis.bilibili.live import LiveInputType
+from langup.listener.schema import LiveInputType, SchedulingEvent
 from langup.chains import LLMChain
-from langup.listener.bilibili import EventName
-from langup.utils.utils import Continue, BanWordsFilter
+from langup.utils.utils import Continue, BanWordsFilter, func
 
 logger = logging.getLogger('langup')
 
@@ -127,20 +126,15 @@ class VtuBer(core.Langup):
     safe_system: str = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""
     room_id: int
     audio_temple: dict = {
-        LiveInputType.danmu: (
-            '{user_name}说:{text}'
-            '{output}'
-        ),
-        LiveInputType.gift: (
-            '感谢!{text}'
-        ),
-        LiveInputType.user: (
-            '{output}。'
-        )
+        LiveInputType.danmu: '{output}',
+        LiveInputType.user: '{output}。',
+        LiveInputType.speech: '{text}。',
+        LiveInputType.gift: '感谢!{text}'
     }
 
     """扩展"""
     is_filter: bool = True
+    schedulers: Iterable[SchedulingEvent] = Field([], description='调度事件列表')
     extra_ban_words: Optional[List[str]] = None
     _ban_word_filter: Optional[BanWordsFilter] = PrivateAttr()
 
@@ -171,10 +165,19 @@ class VtuBer(core.Langup):
             chain=(
                     RunnablePassthrough.assign(
                         output=RunnableBranch(
-                            lambda x: x['type'] is not LiveInputType.gift,
-                            LLMChain(self.system, self.human) | StrOutputParser()
+                            (lambda x: x['type'] in {LiveInputType.danmu, LiveInputType.speech}, LLMChain(self.system, self.human) | StrOutputParser()),
+                            lambda _: None
                         ) | self.filter)
                     | self.react
             ),
         )
+
+        # 调度监听
+        if self.schedulers:
+            sche_listener = listener.SchedulerWrapper()
+            for e in self.schedulers:
+                sche_listener.scheduler.add_job(**e.get_scheduler_inputs())
+            sche_listener.run()
+            runer.multiple_run([listener.LiveListener(room_id=self.room_id), sche_listener])
+            return
         runer.single_run(listener.LiveListener(room_id=self.room_id))

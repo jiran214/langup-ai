@@ -13,24 +13,7 @@ from bilibili_api import sync
 from pydantic import BaseModel
 
 from langup import config
-
-color_map = {
-    "black": "30",
-    "red": "31",
-    "green": "32",
-    "yellow": "33",
-    "blue": "34",
-    "magenta": "35",
-    "cyan": "36",
-    "white": "39"
-}
-
-style_map = {
-    "normal": "0",
-    "bold": "1",
-    "underline": "4",
-    "reverse": "7"
-}
+from langup.utils.consts import color_map, style_map
 
 
 def singleton(cls):
@@ -41,6 +24,7 @@ def singleton(cls):
         if cls not in _instance:
             _instance[cls] = cls(*args, **kwargs)
         return _instance[cls]
+
     return inner
 
 
@@ -122,7 +106,6 @@ class Continue(Exception):
 
 
 def format_print(text: str, color: str = 'white', style: str = 'normal', end='\n'):
-
     color_code = color_map.get(color, "39")
     style_code = style_map.get(style, "0")
     print(f"\033[{style_code};{color_code}m{text}\033[0m", end=end)
@@ -158,9 +141,11 @@ def get_cookies(
 
 def async_wrapper(fun):
     """带参数的协程函数变成coroutine对象"""
+
     @functools.wraps(fun)
     async def wrap(*args, **kwargs):
         await fun(*args, **kwargs)
+
     return wrap
 
 
@@ -217,3 +202,10 @@ class SimpleMQ(queue.Queue, MQ):
         if self.maxsize != 0 and self.qsize() == self.maxsize:
             self.get()
         self.put(schema)
+
+
+def func(return_data):
+    def f():
+        return return_data
+
+    return f

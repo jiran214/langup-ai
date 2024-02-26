@@ -12,7 +12,7 @@ from langup.core import Langup, RunManager
 from langup import config
 from langup.uploader.simple import UserInputReplyUP
 from langup.uploader.bilibili import VideoCommentUP, VtuBer, ChatUP
-from langup.listener.bilibili import EventName
+from langup.listener.schema import EventName
 from bilibili_api import Credential
 
 
@@ -22,8 +22,6 @@ __version__ = VERSION
 __all__ = [
     'Credential',
     'config',
-    'EventName',
-
     'LLMChain',
     'Langup',
     'RunManager',

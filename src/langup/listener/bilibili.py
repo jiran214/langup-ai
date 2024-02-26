@@ -1,13 +1,11 @@
-import enum
-from typing import Optional, Type, List, Union, ClassVar, Any, TypedDict
+from typing import Optional, List, Any
 from bilibili_api.session import Event
 from bilibili_api import bvid2aid
-
-from pydantic import BaseModel
 
 import langup.core
 import langup.utils.utils
 from langup import apis, config
+from langup.listener.schema import ChatEvent, SessionSchema, EventName
 from langup.utils.utils import start_thread, MQ
 
 
@@ -21,16 +19,6 @@ def note_query_2_aid(note_query: str):
         aid = note_query
 
     return int(aid)
-
-
-class SessionSchema(TypedDict):
-    user_nickname: str
-    source_content: str
-    uri: str
-    source_id: int
-    bvid: str
-    aid: int
-    at_time: int
 
 
 class SessionAtListener(langup.core.Listener):
@@ -88,34 +76,6 @@ class LiveListener(langup.core.Listener):
 
     async def alisten(self) -> dict:
         return self.live_mq.recv()
-
-
-class EventName(enum.Enum):
-    """事件类型:
-    + TEXT:           纯文字消息
-    + PICTURE:        图片消息
-    + WITHDRAW:       撤回消息
-    + GROUPS_PICTURE: 应援团图片，但似乎不常触发，一般使用 PICTURE 即可
-    + SHARE_VIDEO:    分享视频
-    + NOTICE:         系统通知
-    + PUSHED_VIDEO:   UP主推送的视频
-    + WELCOME:        新成员加入应援团欢迎
-    """
-    TEXT = "1"
-    PICTURE = "2"
-    WITHDRAW = "5"
-    GROUPS_PICTURE = "6"
-    SHARE_VIDEO = "7"
-    NOTICE = "10"
-    PUSHED_VIDEO = "11"
-    WELCOME = "306"
-
-
-class ChatEvent(TypedDict):
-    # content: Union[str, int, Picture, Video]
-    content: str
-    sender_uid: int
-    uid: int
 
 
 class ChatListener(langup.core.Listener):
