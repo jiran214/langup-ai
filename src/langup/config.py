@@ -89,3 +89,5 @@ proxy = None
 auth = AuthManager()
 test_net = False
 welcome_tip = False
+
+first_init = False

@@ -32,7 +32,6 @@ class UserInputReplyUP(core.Langup):
     def run(self):
         user_listener = _user_listener_map[self.listen]()
         runer = core.RunManager(
-            listener=user_listener,
             interval=self.interval,
             extra_inputs={'name': self.name, 'listen': self.listen, 'listener': user_listener},
             chain=(
@@ -41,5 +40,5 @@ class UserInputReplyUP(core.Langup):
                 | self.react
             ),
         )
-        runer.listener.user_event.set()
-        sync(runer.arun())
+        user_listener.user_event.set()
+        runer.single_run(user_listener)

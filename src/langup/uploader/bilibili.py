@@ -59,7 +59,6 @@ class VideoCommentUP(core.Langup):
 
     def run(self):
         runer = core.RunManager(
-            listener=listener.SessionAtListener(),
             interval=self.interval,
             extra_inputs={'signals': self.signals, 'reply_temple': self.reply_temple},
             chain=(
@@ -68,7 +67,7 @@ class VideoCommentUP(core.Langup):
                 self.react
             ),
         )
-        sync(runer.arun())
+        runer.single_run(listener.SessionAtListener())
 
 
 class ChatUP(core.Langup):
@@ -85,14 +84,13 @@ class ChatUP(core.Langup):
 
     def run(self):
         runer = core.RunManager(
-            listener=listener.ChatListener(event_name_list=self.event_name_list),
             interval=self.interval,
             chain=(
                 RunnablePassthrough.assign(output=LLMChain(self.system, self.human) | StrOutputParser()) |
                 self.react
             ),
         )
-        sync(runer.arun())
+        runer.single_run(listener.ChatListener(event_name_list=self.event_name_list))
 
 
 class VtuBer(core.Langup):
@@ -168,7 +166,6 @@ class VtuBer(core.Langup):
             self._ban_word_filter = BanWordsFilter(extra_ban_words=self.extra_ban_words)
         self.system = f"{self.safe_system}\n{self.system}"
         runer = core.RunManager(
-            listener=listener.LiveListener(room_id=self.room_id),
             interval=self.interval,
             extra_inputs={'filter': self._ban_word_filter, 'audio_temple': self.audio_temple},
             chain=(
@@ -180,4 +177,4 @@ class VtuBer(core.Langup):
                     | self.react
             ),
         )
-        sync(runer.arun())
+        runer.single_run(listener.LiveListener(room_id=self.room_id))
