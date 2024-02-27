@@ -4,11 +4,11 @@ openai==0.28.0
 langchain==0.0.286
 ratelimit==2.2.1
 pygame~=2.5.1
-scipy==1.7.3
+scipy==1.7.4
 httpx~=0.24.1
 requests~=2.31.0
 pydantic~=2.3.0
-urllib3==1.26.17
+urllib3==1.26.18
 aiofiles~=23.2.1
 setuptools~=65.5.1
 tiktoken~=0.5.1
