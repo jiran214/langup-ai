@@ -12,7 +12,6 @@ from bilibili_api import Credential
 from langup.utils import utils
 
 
-VERSION = '0.0.12'
 credential: Union['Credential', None] = None
 work_dir = './'
 
@@ -84,9 +83,12 @@ class AuthManager:
         assert os.environ.get('OPENAI_API_KEY')
 
 
+auth = AuthManager()
+set_bilibili_config = auth.set_bilibili_config
+set_openai_config = auth.set_openai_config
+
 # 全局proxy，区别于openai_proxy
 proxy = None
-auth = AuthManager()
 test_net = False
 welcome_tip = False
 

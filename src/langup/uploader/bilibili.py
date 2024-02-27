@@ -1,43 +1,47 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import asyncio
 import logging
-import time
 from typing import Optional, List, Iterable
 from pydantic import PrivateAttr, Field
 
 from bilibili_api import sync, Picture
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, RunnableParallel, RunnableLambda, chain, RunnableBranch
+from langchain_core.runnables import RunnablePassthrough, chain, RunnableBranch
 
 from langup import core, listener, apis, config, EventName
 from langup.apis.bilibili import comment
 from langup.listener.schema import LiveInputType, SchedulingEvent
 from langup.chains import LLMChain
-from langup.utils.utils import Continue, BanWordsFilter, func
+from langup.utils.utils import Continue, BanWordsFilter
 
 logger = logging.getLogger('langup')
 
 
 class VideoCommentUP(core.Langup):
-    system: str = "你是一位B站用戶，请你锐评该视频！"
+    """
+    模版变量:
+        answer: 生成结果
+        summary: 逆向得到的官方视频总结
+        nickname: 发起者昵称
+    """
+    system: str = "你是一位B站用戶，帮助我总结视频！"
     human: str = (
         '视频内容如下\n'
         '###\n'
         '{summary}\n'
         '###'
     )
-    interval: int = 5
+    interval: int = 10
     signals: Optional[List[str]] = ['总结一下']
     reply_temple: str = (
         '{answer}'
         '本条回复由AI生成，'
         '由@{nickname}召唤。'
-    )  # answer: brain回复；nickname：发消息用户昵称
-    # 新版本官方提供了总结接口
+    )
 
     @staticmethod
     @chain
+    # 新版本官方提供了总结接口
     async def get_summary(_dict):
         if not any([
             signal in _dict['source_content'] for signal in _dict['signals']
@@ -70,10 +74,8 @@ class VideoCommentUP(core.Langup):
 
 
 class ChatUP(core.Langup):
-
     system: str = '你是一位聊天AI助手'
-    interval: int = 3
-    event_name_list: List[EventName] = [EventName.TEXT]
+    interval: int = 5
 
     @staticmethod
     @chain
@@ -85,42 +87,18 @@ class ChatUP(core.Langup):
         runer = core.RunManager(
             interval=self.interval,
             chain=(
-                RunnablePassthrough.assign(output=LLMChain(self.system, self.human) | StrOutputParser()) |
-                self.react
+                RunnablePassthrough.assign(output=LLMChain(self.system, self.human) | StrOutputParser())
+                | self.react
             ),
         )
-        runer.single_run(listener.ChatListener(event_name_list=self.event_name_list))
+        runer.single_run(listener.ChatListener())
 
 
 class VtuBer(core.Langup):
     """
-    bilibili直播数字人
-    监听：直播间消息
-    思考：过滤、调用GPT生成文本
-    反应：语音回复
-    :param room_id:  bilibili直播房间号
-    :param credential:  bilibili 账号认证
-    :param subtitle: 是否开启字幕
-    :param is_filter: 是否开启过滤
-    :param user_input: 是否开启终端输入
-    :param extra_ban_words: 额外的违禁词
-
-    :param listeners:  感知
-    :param concurrent_num:  并发数
-    :param up_sleep: uploader 运行间隔时间
-    :param listener_sleep: listener 运行间隔时间
-    :param system:   人设
-
-    :param openai_api_key:  openai秘钥
-    :param openai_proxy:   http代理
-    :param openai_api_base:  openai endpoint
-    :param temperature:  gpt温度
-    :param max_tokens:  gpt输出长度
-    :param chat_model_kwargs:  langchain chatModel额外配置参数
-    :param llm_chain_kwargs:  langchain chatChain额外配置参数
-
-    :param brain:  含有run方法的类
-    :param mq:  通信队列
+    模版变量:
+        text：输入文本描述 弹幕/礼物/定时任务...
+        output：生成结果
     """
     system: str = '你是一个Bilibili主播'
     safe_system: str = """请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n"""

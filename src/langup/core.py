@@ -8,6 +8,7 @@ import threading
 from typing import Union, Any, Iterable
 
 import bilibili_api
+import dotenv
 import openai
 from bilibili_api import sync
 from pydantic import BaseModel
@@ -45,6 +46,9 @@ class RunManager(BaseModel, abc.ABC):
     async def aconnect(self, listener: Listener):
         # 初始化
         if config.first_init is False:
+            dotenv.load_dotenv()
+            if 'sessdata' in os.environ:
+                config.set_bilibili_config(os.environ.get('sessdata'), os.environ.get('buvid3'))
             if config.welcome_tip:
                 format_print(WELCOME, color='green')
             if config.test_net:
@@ -97,7 +101,7 @@ class RunManager(BaseModel, abc.ABC):
 class Langup(BaseModel):
     system: str
     human: str = '{text}'
-    interval: int
+    interval: int = 2
 
     @staticmethod
     @chain

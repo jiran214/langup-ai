@@ -79,7 +79,7 @@ class LiveListener(langup.core.Listener):
 
 
 class ChatListener(langup.core.Listener):
-    event_name_list: List[EventName]
+    event_name_list: List[EventName] = [EventName.TEXT]
     max_size: Optional[int] = 0
     session_mq: Optional[MQ] = None
 

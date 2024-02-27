@@ -9,65 +9,90 @@
 ## 安装
 环境：python>=3.8
 
-- 方式一
-  ```shell
-  pip install langup==0.0.10
-  ```
-- 方式二(建议使用python 虚拟环境)
-  ```shell
-  git clone https://github.com/jiran214/langup-ai.git
-  cd langup-ai/
-  python -m pip install --upgrade pip
-  python -m pip install -r requirements.txt
-  ```
-  
+```shell
+# 建议使用python虚拟环境
+pip install langup==0.0.10
+```
 
 ## 快速开始
-- 安装完成后，新建.py文件参考以下代码（注意：采用方式二安装时，可以在src/下新建）
+- 安装完成后，新建xxx.py文件参考以下代码（注意：采用方式二安装时，可以在src/下新建）
 - 所有代码示例 src/examples可见
 
 <details>
-    <summary>Bilibili 直播数字人</summary>
-<br>
+    <summary> 前置步骤 </summary>
+
+OpenAI配置
+```python
+# 1.手动传入
+from langup import config
+config.set_openai_config(openai_api_key='xxx', model_name='gpt-3.5-turbo')  # langchain.ChatOpenAI 参数
+
+# 2.环境变量方式 见下
+# openai_config更多参数不做解释
+```
+
+Bilibili配置
+```python
+from langup import config
+# 1.手动传入：登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
+config.set_bilibili_config(sessdata='xxx', buvid3='xxx', bili_jct='xxx', dedeuserid='xxx', ac_time_value='xxx')
+
+# 2.自动读取浏览器的缓存cookie
+# config.auth.set_credential_from_browser(browser='chrome')
+# config.auth.set_credential_from_browser(browser='edge')
+
+# 3.环境变量方式 见下
+```
+
+代理配置
+```python
+# 系统内openai设置代理
+from langup import config
+config.set_openai_config(openai_api_key='xxx', model_name='gpt-3.5-turbo', openai_proxy='http://xxx')
+
+# 系统内部全局(包括bilibili_api)设置代理
+# config.proxy = 'http://xxx'
+
+# 系统外设置系统代理
+...
+```
+
+环境变量设置
+- 通过环境变量设置参数：工作目录下新建 .env 文件
+  ```text
+  OPENAI_API_KEY=xxx
+  sessdata=xxx
+  buvid3=xxx
+  ```
+
+</details>
+
+<details>
+    <summary>Bilibili 直播自动回复</summary>
 
 ```python
-from langup import config, VtuBer
+from langup import VtuBer
+# from langup import SchedulingEvent, LiveInputType
 
-# config.proxy = 'http://127.0.0.1:7890'
+# 需要配置Bilibili、OpenAI
+# ...
+
 up = VtuBer(
     system="""角色：你现在是一位在哔哩哔哩网站的主播，你很熟悉哔哩哔哩上的网友发言习惯和平台调性，擅长与年轻人打交道。
 背景：通过直播中和用户弹幕的互动，产出有趣的对话，以此吸引更多人来观看直播并关注你。
 任务：你在直播过程中会对每一位直播间用户发的弹幕进行回答，但是要以“杠精”的思维去回答，你会怒怼这些弹幕，不放过每一条弹幕，每次回答字数不能超过100字。""",  # 人设
     room_id=00000,  # Bilibili房间号
-    openai_api_key="""xxx""",  # 同上
-    is_filter=True,  # 是否开启过滤
-    extra_ban_words=[],  # 额外的违禁词
-    concurrent_num=2  # 控制回复弹幕速度
-  
-    # credential 参数说明
-    # 方式一: credential为空，从工作目录/.env文件读取credential
-    # 方式二: 直接传入 https://nemo2011.github.io/bilibili-api/#/get-credential
-    # credential={"sessdata": 'xxx', "buvid3": 'xxx', "bili_jct": 'xxx'}
-    # 方式三: 从浏览器资源读取
-    # browser='edge'
+    ## 进阶
+    # is_filter=True,  # 是否开启过滤
+    # extra_ban_words=[],  # 额外的违禁词
+    # 调度任务
+    # schedulers=[
+    #   SchedulingEvent(live_type=LiveInputType.user, live_input='给粉丝讲一个冷笑话',time='9:11'),  # 9:11分的时候gpt生成"live_input"的回复
+    #   SchedulingEvent(live_type=LiveInputType.speech, live_input='关注永雏塔菲谢谢喵！',time='1h')  # 每隔一小时固定读文案
+    # ]
 )
-up.loop()
+up.run()
 ```
-
-```text
-"""
-bilibili直播数字人参数：
-:param room_id:  bilibili直播房间号
-:param credential:  bilibili 账号认证
-:param is_filter: 是否开启过滤
-:param subtitle: 是否开启字幕
-:param user_input: 是否开启终端输入
-:param extra_ban_words: 额外的违禁词
-
-...见更多配置
-"""
-```
-
 </details>
 
 <details>
@@ -75,89 +100,51 @@ bilibili直播数字人参数：
 <br>
 
 ```python
-from langup import config, VideoCommentUP
+from langup import VideoCommentUP
 
-# config.proxy = 'http://127.0.0.1:7890'
+# 需要配置Bilibili、OpenAI
+# ...
+
 up = VideoCommentUP(
-    up_sleep=10,  # 生成回复间隔事件
-    listener_sleep=60 * 2,  # 2分钟获取一次@消息
-    system="你是一位B站用戶，请你锐评我给你的视频！",
-    signals=['总结一下'],
-    openai_api_key='xxx',
-    model_name='gpt-3.5-turbo',
-  
-    # credential 参数说明
-    # 方式一: credential为空，从工作目录/.env文件读取credential
-    # 方式二: 直接传入 https://nemo2011.github.io/bilibili-api/#/get-credential
-    # credential={"sessdata": 'xxx', "buvid3": 'xxx', "bili_jct": 'xxx'}
-    # 方式三: 自动从浏览器资源读取
-    # browser='edge'
+    system="你是一位B站资深二次元爱好者，请你锐评我给你的视频！",
+    signals=['总结一下', '评论一下'],
+    reply_temple=(
+        '{answer}'
+        '本条回复由AI生成，'
+        '由@{nickname}召唤。'
+    )
 )
-up.loop()
+up.run()
 ```
-
-```text
-"""
-视频下at信息回复机器人
-:param credential: bilibili认证
-:param prompt_temple:  assistant提示词模板
-:param reply_temple:  评论回复模板
-:param model_name: openai 模型名称
-:param signals:  at暗号列表 （注意：B站会过滤一些词）
-:param up_sleep: 每次回复的间隔运行时间(秒)
-:param listener_sleep: listener 每次读取@消息的间隔运行时间(秒)
-...见更多配置
-"""
-```
-
-v-0.0.11更新: 对接了官方新上线AI总结接口，以下参数已弃用
-```text
-:param limit_video_seconds: 过滤视频长度 
-:param limit_token: 请求GPT token限制（默认为model name）
-:param limit_length: 请求GPT 字符串长度限制
-:param compress_mode: 请求GPT 压缩过长的视频文字的方式
-    - random：随机跳跃筛选
-    - left：从左到右
-    - summary: (ai总结待实现)
-```
+注: 新版本使用了B站AI总结的接口
 </details>
 
 <details>
-    <summary>B站私信Bot</summary>
+    <summary>B站私信聊天机器人</summary>
 <br>
 
 ```python
-from langup import ChatUP, Event
+from langup import ChatUP
 
+# 需要配置Bilibili、OpenAI
+# ...
 
-# bilibili cookie 通过浏览器edge提取，apikey从.env读取
-ChatUP(
-    system='你是一位聊天AI助手',
-    # event_name_list 订阅消息列表
-    event_name_list=[Event.TEXT],
-    # credential 参数说明
-    # 方式一: credential为空，从工作目录/.env文件读取credential
-    # 方式二: 直接传入 https://nemo2011.github.io/bilibili-api/#/get-credential
-    # credential={"sessdata": 'xxx', "buvid3": 'xxx', "bili_jct": 'xxx'}
-    # 方式三: 自动从浏览器资源读取
-    # browser='load'
-).loop()
+ChatUP(system='你是一位聊天AI助手').run()
 ```
 </details>
 
 <details>
     <summary>实时语音交互助手</summary>
-<br>
 
 ```python
-from langup import UserInputReplyUP, config
+from langup import UserInputReplyUP
 
-config.proxy = 'http://127.0.0.1:7890'
-# config.openai_api_key = 'xxx' or 创建.env文件 OPENAI_API_KEY=xxx
+# 需要配置OpenAI
+# ...
 
 # 语音实时识别回复
-# 修改语音识别模块配置 config.convert['speech_rec']
-UserInputReplyUP(system='你是一位AI助手', listen='speech').loop() 
+# 语音识别参数见config.convert
+UserInputReplyUP(system='你是一位AI助手', listen='speech').run() 
 ```
 </details>
 
@@ -168,153 +155,15 @@ UserInputReplyUP(system='你是一位AI助手', listen='speech').loop()
 ```python
 from langup import UserInputReplyUP, config
 
-# config.proxy = 'http://127.0.0.1:7890'
-# config.openai_api_key = 'xxx' or 创建.env文件 OPENAI_API_KEY=xxx
+# 需要配置OpenAI
+# ...
 
 # 终端回复
-UserInputReplyUP(system='你是一位AI助手', listen='console').loop()
+UserInputReplyUP(system='你是一位AI助手', listen='console').run()
 ```
 </details>
 
-<details>
-    <summary>更多配置（可忽略）</summary>
-<br>
-
-```text
-"""
-Uploader 所有公共参数：
-:param listeners:  感知
-:param concurrent_num:  并发数
-:param up_sleep: uploader 间隔运行时间 
-:param listener_sleep: listener 间隔运行时间 
-:param system:   人设
-
-:param openai_api_key:  openai秘钥
-:param openai_proxy:   http代理
-:param openai_api_base:  openai endpoint
-:param temperature:  gpt温度
-:param max_tokens:  gpt输出长度
-:param chat_model_kwargs:  langchain chatModel额外配置参数
-:param llm_chain_kwargs:  langchain chatChain额外配置参数
-
-:param brain:  含有run方法的类
-:param mq:  通信队列
-:param use_reaction_lock: 同步运行reactions
-"""
-```
-
-全局配置文件：
-```python
-"""
-langup/config.py
-修改方式：
-form langup import config
-config.xxx = xxx
-"""
-import os
-
-VERSION = '0.0.11'
-credential = None
-work_dir = './'
-
-
-# 声音配置
-tts = {
-    "voice": "zh-CN-XiaoyiNeural",
-    "rate": "+0%",
-    "volume": "+0%",
-    "voice_path": 'voice/'
-}
-
-# 日志配置
-log = {
-    "handlers": ["console"],  # console打印日志到控制台, file文件存储
-    "file_path": "logs/"
-}
-
-# 语音识别
-convert = {
-    "audio_path": "audio/",
-    # SpeechRecognition Module
-    "speech_rec": {
-        # 常用的
-        'phrase_threshold': 1.2,  # 在我们将说话音频视为短语之前的最小说话秒数 - 低于此值的将被忽略（用于过滤点击声和爆音）
-        'energy_threshold': 1300,  # 最小音频能量以进行录制
-
-        'adjust_for_ambient_noise': False,  # 噪声调节energy_threshold
-        'dynamic_energy_threshold': False,  # 动态调节energy_threshold
-        'dynamic_energy_adjustment_damping': 0.15,
-        'dynamic_energy_ratio': 1.5,
-        'pause_threshold': 0.8,  # 在一个短语被认为完成之前的无语音音频秒数
-        'operation_timeout': None,  # 内部操作（例如 API 请求）开始后超时的秒数，或 ``None`` 表示没有超时限制
-        'non_speaking_duration': 0.5  # 录制两侧的无语音音频秒数
-    }
-}
-
-# 字幕控件
-subtitle = {'text_color': "#fa9a19", 'font': ("SimHei", 40)}
-
-root = os.path.dirname(__file__)
-openai_api_key = None  # sk-...
-openai_api_base = None  # https://{your_domain}/v1
-proxy = None  # 代理
-debug = False
-
-test_net = True
-welcome_tip = True
-```
-</details>
 更多机器人开发中...
-<br>
-
-## 注意事项
-- api_key可自动从环境变量获取
-- 国内环境需要设置代理或者openai_api_base 推荐config.proxy='xxx'全局设置，避免设置局部代理导致其它服务不可用
-- Bilibili UP都需要 认证信息，获取使用方式如下
-  - 登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential 
-  - 作为字典参数"credential"传入，或者api_key和Bilibili cookie等信息可以写到.env文件中，程序会隐式读取，参考src/.env.temple
-  - 10.26更新，不需要手动获取，只要你浏览器最近登录过，程序会自动读取浏览器数据 
-    （可以优先尝试，注意windows用户需要完全关闭浏览器进程，否则会出现资源占用情况）
-
-## 架构设计
-部分模块待实现
-<img align="center" width="50%" height="auto" src="https://cdn.nlark.com/yuque/0/2023/png/32547973/1697191309882-31b247a5-86d2-485c-8c2a-f62d185be1fd.png" >
-
-## TodoList
-- Uploader
-  - Vtuber
-    - [X] 基本功能
-    - [X] 违禁词
-    - [X] 并发
-  - VideoCommentUP
-    - [X] 基本功能
-    - [X] 对接官方AI总结
-  - UserInputUP
-    - [X] 基本功能
-    - [X] 语音识别
-  - ChatUP
-    - [x] 基本功能
-- Listener
-  - [X] 语音识别
-  - [ ] 微信
-  - [ ] Bilibili 私信
-  - [ ] QQ
-- Reaction
-  - 字幕
-- 其它
-  - 日志记录
-  - pydantic重构部分类
-  - 认证信息自动获取
-
-## 提示
-<details>
-    <summary>国内访问ChatGPT方式：Vercel反向代理openai api</summary>
-    具体见 <a href="https://github.com/jiran214/proxy" target="_blank">https://github.com/jiran214/proxy</a>
-    <br>
-    <img src="https://camo.githubusercontent.com/5e471e99e8e022cf454693e38ec843036ec6301e27ee1e1fa10325b1cb720584/68747470733a2f2f76657263656c2e636f6d2f627574746f6e" alt="Vercel" data-canonical-src="https://vercel.com/button" style="max-width: 100%;"> 
-<br>
-<br>
-</details>
 
 ## 最后
 - 感谢项目依赖的开源
