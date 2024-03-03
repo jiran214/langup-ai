@@ -18,7 +18,7 @@ _user_listener_map = {
 
 class UserInputReplyUP(core.Langup):
     name: str = 'AI'
-    interval = 2
+    interval: int = 2
     system: str = '你是一位AI助手'
     listen: Literal['console', 'speech']
 

@@ -1,10 +1,10 @@
 edge_tts==6.1.8
 bilibili-api-python==16.1.1
 openai==0.28.0
-langchain==0.0.286
+langchain==0.1.10
 ratelimit==2.2.1
 pygame~=2.5.1
-scipy==1.7.4
+scipy==1.8
 httpx~=0.24.1
 requests~=2.31.0
 pydantic~=2.3.0

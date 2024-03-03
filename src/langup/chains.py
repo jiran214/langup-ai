@@ -8,23 +8,11 @@ from langup import config
 
 def LLMChain(
     system: str,
-    human: str = '{text}',
-    model="gpt-3.5-turbo",
-    openai_api_key: str = None,
-    openai_proxy: str = None,
-    openai_api_base: str = None,
-    temperature: int = 0.65,
-    max_tokens: int = None,
-    chat_model_kwargs: Optional[dict] = None
+    human: str = '{text}'
 ):
-    config.auth.set_openai_config(openai_api_key, openai_proxy, openai_api_base)
-    chat_model_kwargs = chat_model_kwargs or {}
-    chat_model_kwargs.update(
+    chat_model_kwargs = dict(
         max_retries=1,
-        request_timeout=60,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        model=model,
+        request_timeout=60
         **config.auth.openai_kwargs,
     )
     chat_model = ChatOpenAI(**chat_model_kwargs)

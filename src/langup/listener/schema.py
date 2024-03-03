@@ -47,11 +47,12 @@ class ChatEvent(TypedDict):
 
 
 class LiveInputType(enum.Enum):
-    danmu = '弹幕'
+    # gpt生成
     gift = '礼物'
-    # sc = 'sc'
-    user = 'user'
-    speech = 'speech'
+    user = '普通'
+    # 不走gpt
+    danmu = '弹幕'
+    direct = '直接回复'
 
 
 class SchedulingEvent(BaseModel):
@@ -83,3 +84,8 @@ class SchedulingEvent(BaseModel):
 
     def get_scheduler_inputs(self):
         return {'job': func({'type': self.live_type, 'text': self.live_input}), 'trigger': self.trigger, **self.trigger_kwargs}
+
+
+class FixedReply(BaseModel):
+    keyword: str
+    content: str

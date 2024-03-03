@@ -44,7 +44,7 @@ async def on_super_chat(event_dict):
         'text': info['message'],
         'price': info['price'],
         'time': info['start_time'],
-        'type': LiveInputType.sc
+        'type': LiveInputType.danmu
     }
     return input_vars
 

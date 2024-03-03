@@ -176,6 +176,18 @@ class BanWordsFilter(DFA):
         super().__init__(keyword_list)
 
 
+class KeywordsMatcher(DFA):
+
+    def __init__(self, keyword_map: dict):
+        self.keyword_map = keyword_map
+        super().__init__(list(keyword_map.keys()))
+
+    def match(self, content: str):
+        res = super().match(content)
+        print(res)
+        return res and self.keyword_map[res[0]['match']]
+
+
 class MQ(abc.ABC):
     """Listener和Uploader通信"""
 

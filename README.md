@@ -33,13 +33,12 @@ config.set_openai_config(openai_api_key='xxx', model_name='gpt-3.5-turbo')  # la
 
 Bilibili配置
 ```python
-from langup import config
+from langup import config, get_cookies
 # 1.手动传入：登录Bilibili 从浏览器获取cookie:https://nemo2011.github.io/bilibili-api/#/get-credential
 config.set_bilibili_config(sessdata='xxx', buvid3='xxx', bili_jct='xxx', dedeuserid='xxx', ac_time_value='xxx')
 
 # 2.自动读取浏览器的缓存cookie
-# config.auth.set_credential_from_browser(browser='chrome')
-# config.auth.set_credential_from_browser(browser='edge')
+# config.auth.set_bilibili_config(**get_cookies(domain_name='bilibili.com', browser='edge'))
 
 # 3.环境变量方式 见下
 ```
@@ -72,7 +71,7 @@ config.set_openai_config(openai_api_key='xxx', model_name='gpt-3.5-turbo', opena
 
 ```python
 from langup import VtuBer
-# from langup import SchedulingEvent, LiveInputType
+# from langup import SchedulingEvent, LiveInputType, FixedReply
 
 # 需要配置Bilibili、OpenAI
 # ...
@@ -82,14 +81,19 @@ up = VtuBer(
 背景：通过直播中和用户弹幕的互动，产出有趣的对话，以此吸引更多人来观看直播并关注你。
 任务：你在直播过程中会对每一位直播间用户发的弹幕进行回答，但是要以“杠精”的思维去回答，你会怒怼这些弹幕，不放过每一条弹幕，每次回答字数不能超过100字。""",  # 人设
     room_id=00000,  # Bilibili房间号
-    ## 进阶
+    ### 进阶 ##
     # is_filter=True,  # 是否开启过滤
     # extra_ban_words=[],  # 额外的违禁词
-    # 调度任务
+    ## 关键词指定回复
+    # fixed_replies=[FixedReply(keyword='是AI','我不是AI我是真人')],
+    ## 调度任务
     # schedulers=[
     #   SchedulingEvent(live_type=LiveInputType.user, live_input='给粉丝讲一个冷笑话',time='9:11'),  # 9:11分的时候gpt生成"live_input"的回复
     #   SchedulingEvent(live_type=LiveInputType.speech, live_input='关注永雏塔菲谢谢喵！',time='1h')  # 每隔一小时固定读文案
-    # ]
+    # ],
+    ## 知识库检索器提供上下文
+    # retriever="<class 'langchain.VectorStoreRetriever>'"
+
 )
 up.run()
 ```

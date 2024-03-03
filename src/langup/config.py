@@ -9,8 +9,6 @@ from typing import Optional, Literal
 
 from bilibili_api import Credential
 
-from langup.utils import utils
-
 
 credential: Union['Credential', None] = None
 work_dir = './'
@@ -52,21 +50,26 @@ class AuthManager:
     credential: Optional[Credential] = None
     openai_kwargs: dict = {}
 
-    def set_credential_from_browser(self, browser: Literal[
-        'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
-        'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
-    ]):
-        cookies = utils.get_cookies(domain_name='bilibili.com', browser=browser)
-        self.set_bilibili_config(**cookies)
-
     def set_bilibili_config(self,
             sessdata: str, buvid3: str, bili_jct: Optional[str] = None, dedeuserid: Optional[str] = None, ac_time_value: Optional[str] = None
         ):
         self.credential = Credential(sessdata=sessdata, buvid3=buvid3, bili_jct=bili_jct, dedeuserid=dedeuserid, ac_time_value=ac_time_value)
 
-    def set_openai_config(self, openai_api_key=None, openai_proxy=None, openai_api_base=None, **openai_kwargs):
+    def set_openai_config(
+        self,
+        openai_api_key=None,
+        openai_proxy=None,
+        openai_api_base=None,
+        model="gpt-3.5-turbo",
+        **openai_kwargs
+    ):
         os.environ.setdefault('OPENAI_API_KEY', openai_api_key)
-        openai_kwargs.update(openai_api_key=openai_api_key, openai_proxy=openai_proxy, openai_api_base=openai_api_base)
+        openai_kwargs.update(
+            openai_api_key=openai_api_key,
+            openai_proxy=openai_proxy,
+            openai_api_base=openai_api_base,
+            model=model
+        )
         for key in openai_kwargs.keys():
             if not openai_kwargs.get(key):
                 openai_kwargs.pop(key)
