@@ -49,10 +49,10 @@ class ChatEvent(TypedDict):
 
 class LiveInputType(enum.Enum):
     # gpt生成
-    gift = '礼物'
     user = '普通'
-    # 不走gpt
     danmu = '弹幕'
+    # 不走gpt
+    gift = '礼物'
     direct = '直接回复'
 
 

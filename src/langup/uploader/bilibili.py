@@ -155,8 +155,7 @@ class VtuBer(core.Langup):
             return _dict['text']
         return _dict
 
-    def run(self):
-        # 初始化
+    def model_post_init(self, __context) -> None:
         if self.is_filter:
             self._ban_word_filter = BanWordsFilter(extra_ban_words=self.extra_ban_words)
         if self.keyword_replies:
@@ -164,6 +163,8 @@ class VtuBer(core.Langup):
         if self.retriever and 'context' not in self.human:
             self.human = "参考上下文:{context}\n" + self.human
         self.system = f"{self.safe_system}\n{self.system}"
+
+    def run(self):
         # 构建
         runer = core.RunManager(
             interval=self.interval,

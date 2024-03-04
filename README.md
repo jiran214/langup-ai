@@ -88,7 +88,7 @@ up = VtuBer(
     ## 调度任务
     # schedulers=[
     #   SchedulingEvent(live_type=LiveInputType.user, live_input='给粉丝讲一个冷笑话',time='9:11'),  # 9:11分的时候gpt生成"live_input"的回复
-    #   SchedulingEvent(live_type=LiveInputType.speech, live_input='关注永雏塔菲谢谢喵！',time='1h')  # 每隔一小时固定读文案
+    #   SchedulingEvent(live_type=LiveInputType.direct, live_input='关注永雏塔菲谢谢喵！',time='1h')  # 每隔一小时固定读固定文案
     # ],
     ## langchain知识库、检索器提供上下文，参考langchain文档 需要自己实例化
     # retriever="<class 'langchain_core.retrievers.BaseRetriever'>"
