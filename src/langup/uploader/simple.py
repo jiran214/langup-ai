@@ -20,7 +20,7 @@ class UserInputReplyUP(core.Langup):
     name: str = 'AI'
     interval: int = 2
     system: str = '你是一位AI助手'
-    listen: Literal['console', 'speech']
+    listen: Literal['console', 'speech']  # 输入方式
 
     @staticmethod
     @chain
