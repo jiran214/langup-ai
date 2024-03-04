@@ -5,6 +5,8 @@ langchain==0.1.10
 ratelimit==2.2.1
 pygame~=2.5.1
 scipy==1.8
+pyaudio
+langchain_openai
 httpx~=0.24.1
 requests~=2.31.0
 pydantic~=2.3.0

@@ -2,12 +2,10 @@ from typing import Optional, List, Any
 from bilibili_api.session import Event
 from bilibili_api import bvid2aid
 
-import langup.core
-import langup.listener.base
-import langup.utils.utils
-from langup import apis, config
+from langup import apis, config, core
+from langup.listener.base import Listener
 from langup.listener.schema import ChatEvent, SessionSchema, EventName
-from langup.utils.utils import start_thread, MQ
+from langup.utils.utils import start_thread, MQ, SimpleMQ
 
 
 def note_query_2_aid(note_query: str):
@@ -22,7 +20,7 @@ def note_query_2_aid(note_query: str):
     return int(aid)
 
 
-class SessionAtListener(langup.listener.base.Listener):
+class SessionAtListener(Listener):
     newest_at_time: int = 0
     aid_record_map: set = set()
 
@@ -64,14 +62,14 @@ class SessionAtListener(langup.listener.base.Listener):
         return schema
 
 
-class LiveListener(langup.listener.base.Listener):
+class LiveListener(Listener):
     room_id: int
     max_size: int = 20
     live_mq: Optional[MQ] = None
 
     def model_post_init(self, __context: Any) -> None:
         config.auth.check_bilibili_config()
-        self.live_mq = langup.utils.utils.SimpleMQ(maxsize=self.max_size)
+        self.live_mq = SimpleMQ(maxsize=self.max_size)
         room = apis.bilibili.live.BlLiveRoom(self.room_id, self.live_mq)
         t = start_thread(room.connect)
 
@@ -80,14 +78,14 @@ class LiveListener(langup.listener.base.Listener):
         return self.live_mq.recv()
 
 
-class ChatListener(langup.listener.base.Listener):
+class ChatListener(Listener):
     event_name_list: List[EventName] = [EventName.TEXT]
     max_size: Optional[int] = 0
     session_mq: Optional[MQ] = None
 
     def model_post_init(self, __context: Any) -> None:
         config.auth.check_bilibili_config()
-        self.session_mq = langup.utils.utils.SimpleMQ(maxsize=self.max_size)
+        self.session_mq = SimpleMQ(maxsize=self.max_size)
         s = apis.bilibili.session.ChatSession(credential=config.auth.credential, mq=self.session_mq)
         s.register_handlers([event_name.value for event_name in self.event_name_list])
         t = start_thread(s.connect)

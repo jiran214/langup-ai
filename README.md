@@ -166,6 +166,22 @@ UserInputReplyUP(system='你是一位AI助手', listen='console').run()
 ```
 </details>
 
+
+<details>
+    <summary>其它</summary>
+
+- 国内环境需要设置代理 `config.set_openai_config(openai_proxy='http://127.0.0.1:7890')`
+- 查看详细日志方式
+  ```python
+  import logging
+  # 设置日志
+  logger = logging.getLogger('langup')
+  logger.setLevel(logging.DEBUG)
+  logger.addHandler(logging.StreamHandler())
+  ```
+</details>
+
+
 更多机器人开发中...
 
 ## 最后

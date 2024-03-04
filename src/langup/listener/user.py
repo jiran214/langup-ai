@@ -42,7 +42,7 @@ class SpeechListener(UserInputListener):
     def get_input(self):
         self.user_event.wait()
         while 1:
-            utils.format_print('录音中...', end='')
+            utils.format_print('录音中，让我听听你说了什么...', end='')
             # 进行识别
             audio = self.convert.listen()
             utils.format_print('录音结束，识别中...', end='')

@@ -1,24 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from typing import Literal, Optional
-
-from bilibili_api import sync
+import logging
+from typing import Literal
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import chain, RunnablePassthrough
-from pydantic import Field
+from langchain_core.runnables import chain, RunnablePassthrough, RunnableLambda
 
-from langup import listener, core, LLMChain, apis
+from langup import core, LLMChain, apis
+from langup.listener.user import ConsoleListener, SpeechListener
 from langup.utils import utils
 
 _user_listener_map = {
-    'console': listener.ConsoleListener,
-    'speech': listener.SpeechListener
+    'console': ConsoleListener,
+    'speech': SpeechListener
 }
+
+
+logger = logging.getLogger('langup.simple')
 
 
 class UserInputReplyUP(core.Langup):
     name: str = 'AI'
-    interval: int = 2
     system: str = '你是一位AI助手'
     listen: Literal['console', 'speech']  # 输入方式
 
@@ -27,17 +28,16 @@ class UserInputReplyUP(core.Langup):
     async def react(_dict):
         utils.format_print(f"{_dict['name']}: {_dict['output']}", color='green')
         await apis.voice.tts_speak(audio_txt=_dict['output'])
-        _dict['listener'].user_event.set()
 
     def run(self):
+        logger.debug('初始化 user_listener')
         user_listener = _user_listener_map[self.listen]()
         runer = core.RunManager(
+            extra_inputs={'name': self.name, 'listen': self.listen},
             manager_config=self,
-            extra_inputs={'name': self.name, 'listen': self.listen, 'listener': user_listener},
             chain=(
-                LLMChain(self.system, self.human)
-                | StrOutputParser()
-                | self.react
+                RunnablePassthrough.assign(output=LLMChain(self.system, self.human) | StrOutputParser())
+                | self.react | RunnableLambda(lambda _: user_listener.user_event.set())
             ),
         )
         runer.bind_listener(user_listener)

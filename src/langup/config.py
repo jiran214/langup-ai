@@ -7,6 +7,7 @@ import asyncio
 import os
 from typing import Optional, Literal
 
+import httpx
 from bilibili_api import Credential
 
 
@@ -65,15 +66,14 @@ class AuthManager:
     ):
         os.environ.setdefault('OPENAI_API_KEY', openai_api_key)
         openai_kwargs.update(
+            http_client=httpx.AsyncClient(proxies={'http://': openai_proxy, 'https://': openai_proxy}),
             openai_api_key=openai_api_key,
-            openai_proxy=openai_proxy,
             openai_api_base=openai_api_base,
             model=model
         )
         for key in openai_kwargs.keys():
-            if not openai_kwargs.get(key):
-                openai_kwargs.pop(key)
-        self.openai_kwargs.update(openai_kwargs)
+            if V := openai_kwargs.get(key):
+                self.openai_kwargs[key] = V
 
     @functools.cache
     def check_bilibili_config(self):
