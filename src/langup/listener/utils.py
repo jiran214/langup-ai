@@ -7,7 +7,7 @@ from apscheduler.events import EVENT_JOB_EXECUTED
 from apscheduler.schedulers.background import BackgroundScheduler
 from pydantic import Field, BaseModel
 
-from langup.core import Listener
+from langup.listener.base import Listener
 from langup.utils.utils import SimpleMQ
 
 

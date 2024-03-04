@@ -3,6 +3,7 @@ from bilibili_api.session import Event
 from bilibili_api import bvid2aid
 
 import langup.core
+import langup.listener.base
 import langup.utils.utils
 from langup import apis, config
 from langup.listener.schema import ChatEvent, SessionSchema, EventName
@@ -21,7 +22,7 @@ def note_query_2_aid(note_query: str):
     return int(aid)
 
 
-class SessionAtListener(langup.core.Listener):
+class SessionAtListener(langup.listener.base.Listener):
     newest_at_time: int = 0
     aid_record_map: set = set()
 
@@ -63,7 +64,7 @@ class SessionAtListener(langup.core.Listener):
         return schema
 
 
-class LiveListener(langup.core.Listener):
+class LiveListener(langup.listener.base.Listener):
     room_id: int
     max_size: int = 20
     live_mq: Optional[MQ] = None
@@ -79,7 +80,7 @@ class LiveListener(langup.core.Listener):
         return self.live_mq.recv()
 
 
-class ChatListener(langup.core.Listener):
+class ChatListener(langup.listener.base.Listener):
     event_name_list: List[EventName] = [EventName.TEXT]
     max_size: Optional[int] = 0
     session_mq: Optional[MQ] = None

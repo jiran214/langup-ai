@@ -13,11 +13,12 @@ from pydantic import BaseModel, Field
 import langup.core
 from speech_recognition import UnknownValueError
 
+import langup.listener.base
 from langup.utils import utils
 from langup.utils.converts import Audio2Text, Speech2Audio
 
 
-class UserInputListener(langup.core.Listener, abc.ABC):
+class UserInputListener(langup.listener.base.Listener, abc.ABC):
     user_event: threading.Event = Field(default_factory=threading.Event)
 
     @abc.abstractmethod

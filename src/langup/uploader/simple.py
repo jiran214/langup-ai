@@ -32,7 +32,7 @@ class UserInputReplyUP(core.Langup):
     def run(self):
         user_listener = _user_listener_map[self.listen]()
         runer = core.RunManager(
-            interval=self.interval,
+            manager_config=self,
             extra_inputs={'name': self.name, 'listen': self.listen, 'listener': user_listener},
             chain=(
                 LLMChain(self.system, self.human)

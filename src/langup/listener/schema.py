@@ -57,8 +57,7 @@ class LiveInputType(enum.Enum):
 
 
 class SchedulingEvent(BaseModel):
-    live_type: LiveInputType = Field(description='模拟输入类型')
-    live_input: str
+    input: Union[str, dict]
     time: Optional[str] = Field(description='设定时间，自动解析', examples=['5s', '1m', '1h', '3:11'])
     trigger: Optional[Literal['cron', 'interval']] = None
     trigger_kwargs: dict = {}
@@ -84,8 +83,7 @@ class SchedulingEvent(BaseModel):
                     raise ValidationError('间隔任务以s h m 结尾')
 
     def get_scheduler_inputs(self):
-        return {'job': func({'type': self.live_type, 'text': self.live_input}), 'trigger': self.trigger,
-                **self.trigger_kwargs}
+        return {'job': func(self.input), 'trigger': self.trigger, **self.trigger_kwargs}
 
 
 class KeywordReply(BaseModel):

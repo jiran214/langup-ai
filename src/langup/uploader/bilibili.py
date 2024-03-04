@@ -66,7 +66,7 @@ class VideoCommentUP(core.Langup):
 
     def run(self):
         runer = core.RunManager(
-            interval=self.interval,
+            manager_config=self,
             extra_inputs={'signals': self.signals, 'reply_temple': self.reply_temple},
             chain=(
                 RunnablePassthrough.assign(summary=self.get_summary) |
@@ -89,7 +89,7 @@ class ChatUP(core.Langup):
 
     def run(self):
         runer = core.RunManager(
-            interval=self.interval,
+            manager_config=self,
             chain=(
                 {'output': LLMChain(self.system, self.human) | StrOutputParser(), 'sender_uid': itemgetter('sender_uid')}
                 | self.react
@@ -111,9 +111,7 @@ class VtuBer(core.Langup):
 
     """扩展"""
     is_filter: bool = True
-    schedulers: Iterable[SchedulingEvent] = Field([], description='调度事件列表')
     keyword_replies: Iterable[KeywordReply] = Field([], description='固定回复列表列表')
-    retriever: Optional[BaseRetriever] = Field(None, description='langchain检索器')
     extra_ban_words: Optional[List[str]] = None
     _ban_word_filter: Optional[BanWordsFilter] = PrivateAttr()
     _keywords_matcher: Optional[KeywordsMatcher] = PrivateAttr()
@@ -146,10 +144,6 @@ class VtuBer(core.Langup):
                 if isinstance(callback, Chain):
                     return callback.invoke(_dict)
             _chain = LLMChain(self.system, self.human) | StrOutputParser()
-            if self.retriever:
-                _chain = (
-                    RunnablePassthrough.assign(context=_dict['text'] | self.retriever) | _chain
-                )
             return chain
         elif _dict['type'] is {LiveInputType.direct, LiveInputType.gift}:
             return _dict['text']
@@ -160,23 +154,13 @@ class VtuBer(core.Langup):
             self._ban_word_filter = BanWordsFilter(extra_ban_words=self.extra_ban_words)
         if self.keyword_replies:
             self._keywords_matcher = KeywordsMatcher({reply.keyword: reply.content for reply in self.keyword_replies})
-        if self.retriever and 'context' not in self.human:
-            self.human = "参考上下文:{context}\n" + self.human
         self.system = f"{self.safe_system}\n{self.system}"
 
     def run(self):
         # 构建
         runer = core.RunManager(
-            interval=self.interval,
+            manager_config=self,
             extra_inputs={'self': self},
             chain=(self.route | self.filter | self.react),
         )
-        # 调度监听
-        if self.schedulers:
-            sche_listener = listener.SchedulerWrapper()
-            for e in self.schedulers:
-                sche_listener.scheduler.add_job(**e.get_scheduler_inputs())
-            sche_listener.run()
-            runer.multiple_run([listener.LiveListener(room_id=self.room_id), sche_listener])
-            return
         runer.single_run(listener.LiveListener(room_id=self.room_id))

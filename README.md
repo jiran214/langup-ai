@@ -91,7 +91,8 @@ up = VtuBer(
     #   SchedulingEvent(live_type=LiveInputType.direct, live_input='关注永雏塔菲谢谢喵！',time='1h')  # 每隔一小时固定读固定文案
     # ],
     ## langchain知识库、检索器提供上下文，参考langchain文档 需要自己实例化
-    # retriever="<class 'langchain_core.retrievers.BaseRetriever'>"
+    # human="参考上下文:{context}\n{text}",
+    # retriever_map={'context': <class 'langchain_core.retrievers.BaseRetriever'>}
 )
 up.run()
 ```
