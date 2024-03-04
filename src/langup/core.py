@@ -27,21 +27,9 @@ class RunManager(BaseModel, abc.ABC):
     chain: Union[Runnable]
     extra_inputs: dict = {}
     manager_config: 'Langup'
-    listeners: List[Listener] = []
+    listener_map: Dict[Listener, int] = {}
 
     def model_post_init(self, __context: Any) -> None:
-        if self.manager_config.retriever_map:
-            self.chain = (RunnableAssign(**self.manager_config.retriever_map) | self.chain)
-        # 调度监听
-        if self.schedulers:
-            sche_listener = SchedulerWrapper()
-            for e in self.schedulers:
-                sche_listener.scheduler.add_job(**e.get_scheduler_inputs())
-            sche_listener.run()
-            self.bind_listener(sche_listener)
-            return
-
-    async def aconnect(self, listener: Listener):
         # 初始化
         if config.first_init is False:
             dotenv.load_dotenv()
@@ -58,6 +46,18 @@ class RunManager(BaseModel, abc.ABC):
                 bilibili_api.settings.proxy = config.proxy
         config.first_init = True
 
+        if self.manager_config.retriever_map:
+            self.chain = (RunnableAssign(**self.manager_config.retriever_map) | self.chain)
+        # 调度监听
+        if self.schedulers:
+            sche_listener = SchedulerWrapper()
+            for e in self.schedulers:
+                sche_listener.scheduler.add_job(**e.get_scheduler_inputs())
+            sche_listener.run()
+            self.bind_listener(sche_listener)
+            return
+
+    async def aconnect(self, listener: Listener):
         while 1:
             res = await listener.alisten()
             # 收到list类型，逐一处理
@@ -75,19 +75,23 @@ class RunManager(BaseModel, abc.ABC):
             logger.debug(f'sleep:{self.interval}')
             await asyncio.sleep(self.manager_config.interval)
 
-    def bind_listener(self, l: Listener):
-        self.listeners.append(l)
+    def bind_listener(self, l: Listener, thread_num=1):
+        self.listener_map[l] = thread_num
 
     def run(self):
+        """一个listener对应一个线程运行，对应多个aconnect协程"""
         assert self.listeners, '未设置 listeners'
-        if len(self.listeners) == 1:
-            sync(self.aconnect(self.listeners.pop()))
-            return
-
         threads = []
 
-        for l in self.listeners:
-            t = threading.Thread(target=self.single_run, args=(l,))
+        async def coroutine_task(tasks):
+            await asyncio.gather(*tasks)
+
+        for l, n in self.listener_map.items():
+            if n == 1:
+                sync(self.aconnect(l))
+                continue
+            coroutines = [asyncio.create_task(self.aconnect(l)) for _ in range(n)]
+            t = threading.Thread(target=sync, args=(coroutine_task(coroutines),))
             t.start()
             threads.append(t)
 
