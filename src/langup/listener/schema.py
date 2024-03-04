@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import enum
-from typing import TypedDict, Literal, Any, Optional
+from typing import TypedDict, Literal, Any, Optional, Union
 
+from langchain.chains.base import Chain
 from pydantic import BaseModel, Field, ValidationError
 
 from langup.utils.utils import func
@@ -83,9 +84,10 @@ class SchedulingEvent(BaseModel):
                     raise ValidationError('间隔任务以s h m 结尾')
 
     def get_scheduler_inputs(self):
-        return {'job': func({'type': self.live_type, 'text': self.live_input}), 'trigger': self.trigger, **self.trigger_kwargs}
+        return {'job': func({'type': self.live_type, 'text': self.live_input}), 'trigger': self.trigger,
+                **self.trigger_kwargs}
 
 
-class FixedReply(BaseModel):
+class KeywordReply(BaseModel):
     keyword: str
-    content: str
+    content: Union[str, Chain]

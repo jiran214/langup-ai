@@ -10,6 +10,7 @@ from http.cookiejar import CookieJar
 from typing import Optional, Any, Literal, Callable, List, Union
 import browser_cookie3
 from bilibili_api import sync
+from langchain.chains.base import Chain
 from pydantic import BaseModel
 
 from langup import config
@@ -182,10 +183,9 @@ class KeywordsMatcher(DFA):
         self.keyword_map = keyword_map
         super().__init__(list(keyword_map.keys()))
 
-    def match(self, content: str):
+    def match(self, content: str) -> Union[None, Chain, str]:
         res = super().match(content)
-        print(res)
-        return res and self.keyword_map[res[0]['match']]
+        return res and self.keyword_map.get(res[0]['match'])
 
 
 class MQ(abc.ABC):

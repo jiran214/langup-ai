@@ -75,6 +75,7 @@ class LiveListener(langup.core.Listener):
         t = start_thread(room.connect)
 
     async def alisten(self) -> dict:
+        """dict key: text username..."""
         return self.live_mq.recv()
 
 
@@ -90,6 +91,7 @@ class ChatListener(langup.core.Listener):
         s.register_handlers([event_name.value for event_name in self.event_name_list])
         t = start_thread(s.connect)
 
-    async def alisten(self) -> ChatEvent:
+    async def alisten(self) -> dict:
+        """dict key: content sender_uid uid"""
         event: Event = self.session_mq.recv()
         return dict(sender_uid=event.sender_uid, uid=event.uid, content=event.content)

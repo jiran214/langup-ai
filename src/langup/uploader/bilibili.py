@@ -4,6 +4,7 @@ import logging
 from operator import itemgetter
 from typing import Optional, List, Iterable
 
+from langchain.chains.base import Chain
 from langchain_core.retrievers import BaseRetriever
 from pydantic import PrivateAttr, Field
 
@@ -13,7 +14,7 @@ from langchain_core.runnables import RunnablePassthrough, chain
 
 from langup import core, listener, apis, config
 from langup.apis.bilibili import comment
-from langup.listener.schema import LiveInputType, SchedulingEvent, FixedReply, EventName
+from langup.listener.schema import LiveInputType, SchedulingEvent, KeywordReply, EventName
 from langup.chains import LLMChain
 from langup.utils.utils import Continue, BanWordsFilter, KeywordsMatcher
 
@@ -111,7 +112,7 @@ class VtuBer(core.Langup):
     """扩展"""
     is_filter: bool = True
     schedulers: Iterable[SchedulingEvent] = Field([], description='调度事件列表')
-    fixed_replies: Iterable[FixedReply] = Field([], description='固定回复列表列表')
+    keyword_replies: Iterable[KeywordReply] = Field([], description='固定回复列表列表')
     retriever: Optional[BaseRetriever] = Field(None, description='langchain检索器')
     extra_ban_words: Optional[List[str]] = None
     _ban_word_filter: Optional[BanWordsFilter] = PrivateAttr()
@@ -139,13 +140,15 @@ class VtuBer(core.Langup):
     def route(_dict):
         self = _dict['self']
         if _dict['type'] in {LiveInputType.danmu, LiveInputType.user}:
-            if self._keywords_matcher and (fixed_reply := self._keywords_matcher.match(_dict['text'])):
-                return fixed_reply
+            if self._keywords_matcher and (callback := self._keywords_matcher.match(_dict['text'])):
+                if isinstance(callback, str):
+                    return callback
+                if isinstance(callback, Chain):
+                    return callback.invoke(_dict)
             _chain = LLMChain(self.system, self.human) | StrOutputParser()
             if self.retriever:
                 _chain = (
-                    RunnablePassthrough.assign(context=_dict['text'] | self.retriever)
-                    | _chain
+                    RunnablePassthrough.assign(context=_dict['text'] | self.retriever) | _chain
                 )
             return chain
         elif _dict['type'] is {LiveInputType.direct, LiveInputType.gift}:
@@ -156,8 +159,8 @@ class VtuBer(core.Langup):
         # 初始化
         if self.is_filter:
             self._ban_word_filter = BanWordsFilter(extra_ban_words=self.extra_ban_words)
-        if self.fixed_replies:
-            self._keywords_matcher = KeywordsMatcher({reply.keyword: reply.content for reply in self.fixed_replies})
+        if self.keyword_replies:
+            self._keywords_matcher = KeywordsMatcher({reply.keyword: reply.content for reply in self.keyword_replies})
         if self.retriever and 'context' not in self.human:
             self.human = "参考上下文:{context}\n" + self.human
         self.system = f"{self.safe_system}\n{self.system}"

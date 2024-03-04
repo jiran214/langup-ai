@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from langup import VtuBer
 
-# from langup import SchedulingEvent, LiveInputType
+# from langup import SchedulingEvent, LiveInputType, KeywordReply
 
 # 需要配置Bilibili、OpenAI
 # ...
@@ -17,7 +17,7 @@ up = VtuBer(
     # is_filter=True,  # 是否开启过滤
     # extra_ban_words=[],  # 额外的违禁词
     ## 关键词指定回复
-    # fixed_replies=[FixedReply(keyword='是AI','我不是AI我是真人')],
+    # keyword_replies=[KeywordReply(keyword='是AI', content='我不是AI我是真人')],
     ## 调度任务
     # schedulers=[
     #   SchedulingEvent(live_type=LiveInputType.user, live_input='给粉丝讲一个冷笑话',time='9:11'),  # 9:11分的时候gpt生成"live_input"的回复

@@ -13,7 +13,7 @@ from langup.core import Langup, RunManager
 from langup import config
 from langup.uploader.simple import UserInputReplyUP
 from langup.uploader.bilibili import VideoCommentUP, VtuBer, ChatUP
-from langup.listener.schema import SchedulingEvent, LiveInputType, FixedReply
+from langup.listener.schema import SchedulingEvent, LiveInputType, KeywordReply
 
 __all__ = [
     'LLMChain',
@@ -21,7 +21,7 @@ __all__ = [
     'RunManager',
 
     'SchedulingEvent',
-    'FixedReply',
+    'KeywordReply',
     'get_cookies',
 
     'config',
