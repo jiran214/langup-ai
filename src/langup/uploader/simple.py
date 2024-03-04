@@ -40,5 +40,6 @@ class UserInputReplyUP(core.Langup):
                 | self.react
             ),
         )
+        runer.bind_listener(user_listener)
         user_listener.user_event.set()
-        runer.single_run(user_listener)
+        runer.run()

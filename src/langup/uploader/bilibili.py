@@ -74,7 +74,8 @@ class VideoCommentUP(core.Langup):
                 self.react
             ),
         )
-        runer.single_run(listener.SessionAtListener())
+        runer.bind_listener(listener.SessionAtListener())
+        runer.run()
 
 
 class ChatUP(core.Langup):
@@ -95,7 +96,8 @@ class ChatUP(core.Langup):
                 | self.react
             ),
         )
-        runer.single_run(listener.ChatListener())
+        runer.bind_listener(listener.ChatListener())
+        runer.run()
 
 
 class VtuBer(core.Langup):
@@ -163,4 +165,5 @@ class VtuBer(core.Langup):
             extra_inputs={'self': self},
             chain=(self.route | self.filter | self.react),
         )
-        runer.single_run(listener.LiveListener(room_id=self.room_id))
+        runer.bind_listener(listener.LiveListener(room_id=self.room_id))
+        runer.run()
