@@ -6,6 +6,7 @@ from typing import Union
 import asyncio
 import os
 from typing import Optional, Literal
+from urllib.request import getproxies
 
 import httpx
 from bilibili_api import Credential
@@ -65,7 +66,7 @@ class AuthManager:
     ):
         os.environ.setdefault('OPENAI_API_KEY', openai_api_key)
         openai_kwargs.update(
-            http_client=httpx.AsyncClient(proxies={'http://': openai_proxy, 'https://': openai_proxy}),
+            openai_proxy=openai_proxy,
             openai_api_key=openai_api_key,
             openai_api_base=openai_api_base,
             model=model

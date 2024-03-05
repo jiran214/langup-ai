@@ -10,6 +10,7 @@ from urllib.request import getproxies
 
 import bilibili_api
 import dotenv
+import httpx
 import openai
 from bilibili_api import sync
 from langchain.globals import set_llm_cache
@@ -32,8 +33,20 @@ logger = logging.getLogger('langup')
 
 
 def set_openai_model():
+    proxies = None
+    if openai_proxy := config.auth.openai_kwargs.get('openai_proxy'):
+        proxies = {'http://': openai_proxy, 'https://': openai_proxy}
+    elif global_proxies := getproxies():
+        proxies = {
+            'http://': global_proxies['http'],
+            'https://': global_proxies['http'],
+        }
+        os.environ['HTTPS_PROXY'] = global_proxies['http']
+        os.environ['HTTP_PROXY'] = global_proxies['http']
+
     chat_model_kwargs = {
         'max_retries': 1,
+        'http_client': proxies and httpx.AsyncClient(proxies=proxies),
         'request_timeout': 60,
         **config.auth.openai_kwargs,
     }
@@ -55,7 +68,7 @@ class Langup(BaseModel):
     runnable_config: Optional[RunnableConfig] = None
     _prompt: BasePromptTemplate = PrivateAttr()
 
-    def set_cache(self, ):
+    def set_cache(self):
         """
             set_llm_cache(InMemoryCache())
             set_llm_cache(SQLiteCache(database_path=".langchain.db"))
@@ -66,6 +79,7 @@ class Langup(BaseModel):
     def check_prompt(self):
         for prompt_var in self.retriever_map:
             assert prompt_var in self.human, f'请在Langup.human中传入{prompt_var}模版变量'
+        return self
 
     @model_validator(mode='after')
     def __set_prompt(self):
@@ -73,6 +87,7 @@ class Langup(BaseModel):
             ('system', self.system),
             ('human', self.human)
         ])
+        return self
 
     @staticmethod
     @chain
@@ -110,13 +125,6 @@ class RunManager(BaseModel):
                 os.environ['HTTPS_PROXY'] = config.proxy
                 os.environ['HTTP_PROXY'] = config.proxy
                 bilibili_api.settings.proxy = config.proxy
-            else:
-                # 系统代理手动设置
-                global_proxies = getproxies()
-                if global_proxies:
-                    os.environ['HTTPS_PROXY'] = global_proxies.get('https') and global_proxies['https'].replace('https', 'http')
-                    os.environ['HTTP_PROXY'] = global_proxies.get('http')
-
             logger.debug(f"代理环境 https:{os.environ.get('HTTPS_PROXY')} http:{os.environ.get('HTTP_PROXY')}")
         config.first_init = True
         if self.manager_config.retriever_map:
@@ -181,7 +189,7 @@ class RunManager(BaseModel):
 
         return threads
 
-    def run(self, _input):
+    async def run(self, _input):
         if isinstance(_input, dict):
             _input.update(self.extra_inputs)
         logger.debug(f'运行中chain {_input=}')
