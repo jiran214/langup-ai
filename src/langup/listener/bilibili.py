@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, List, Any
 from bilibili_api.session import Event
 from bilibili_api import bvid2aid
@@ -6,6 +7,9 @@ from langup import apis, config, core
 from langup.listener.base import Listener
 from langup.listener.schema import ChatEvent, SessionSchema, EventName
 from langup.utils.utils import start_thread, MQ, SimpleMQ
+
+
+logger = logging.getLogger('langup.listener')
 
 
 def note_query_2_aid(note_query: str):
@@ -71,6 +75,7 @@ class LiveListener(Listener):
         config.auth.check_bilibili_config()
         self.live_mq = SimpleMQ(maxsize=self.max_size)
         room = apis.bilibili.live.BlLiveRoom(self.room_id, self.live_mq)
+        logger.info(f'开启线程:LiveListener')
         t = start_thread(room.connect)
 
     async def alisten(self) -> dict:
@@ -88,9 +93,10 @@ class ChatListener(Listener):
         self.session_mq = SimpleMQ(maxsize=self.max_size)
         s = apis.bilibili.session.ChatSession(credential=config.auth.credential, mq=self.session_mq)
         s.register_handlers([event_name.value for event_name in self.event_name_list])
+        logger.info(f'开启线程:ChatListener')
         t = start_thread(s.connect)
 
     async def alisten(self) -> dict:
         """dict key: content sender_uid uid"""
         event: Event = self.session_mq.recv()
-        return dict(sender_uid=event.sender_uid, uid=event.uid, content=event.content)
+        return dict(sender_uid=event.sender_uid, uid=event.uid, text=event.content)

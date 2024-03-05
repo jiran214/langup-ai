@@ -113,12 +113,14 @@ class RunManager(BaseModel):
         # 初始化
         if config.first_init is False:
             logger.debug('初始化RunManager')
-            dotenv.load_dotenv()
+            dotenv.load_dotenv(verbose=True)
             if 'sessdata' in os.environ:
-                config.set_bilibili_config(os.environ.get('sessdata'), os.environ.get('buvid3'))
+                config.set_bilibili_config(**{k: os.environ.get(k) for k in ('sessdata', 'buvid3', 'bili_jct', 'dedeuserid', 'ac_time_value')})
+                logger.debug(f'初始化bilibili_config from env: {config.auth.credential.get_cookies()}')
             if config.welcome_tip:
                 format_print(WELCOME, color='green')
             if config.test_net:
+                logger.debug('测试外网环境...')
                 requestor, url = openai.Model._ListableAPIResource__prepare_list_requestor()
                 response, _, api_key = requestor.request("get", url, None, None, request_timeout=10)
             if config.proxy:
@@ -160,7 +162,7 @@ class RunManager(BaseModel):
                 except Continue as e:
                     logger.info(f'已过滤:{e}')
                     continue
-            logger.debug(f'暂停:{self.manager_config.interval}')
+            logger.debug(f'等待中:{self.manager_config.interval}')
             await asyncio.sleep(self.manager_config.interval)
 
     def bind_listener(self, l: Listener, thread_num=1):
