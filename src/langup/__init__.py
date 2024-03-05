@@ -1,4 +1,4 @@
-from langup.utils.utils import get_cookies
+from langup.utils.utils import get_cookies, set_langchain_debug, set_logger
 
 try:
     from langchain.chains.base import Chain
@@ -8,15 +8,14 @@ except:
     typing.evaluate_forwardref = lambda type_, globalns, localns: type_._evaluate(globalns, localns)
 
 
-from langup.chains import LLMChain
 from langup import config
 from langup.uploader.simple import UserInputReplyUP
 from langup.uploader.bilibili import VideoCommentUP, VtuBer, ChatUP
 
 __all__ = [
-    'LLMChain',
-
     'get_cookies',
+    'set_langchain_debug',
+    'set_logger',
 
     'config',
     'VideoCommentUP',

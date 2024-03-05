@@ -24,7 +24,7 @@ logger = logging.getLogger('langup.bilibili')
 class VideoCommentUP(core.Langup):
     """
     模版变量:
-        answer: 生成结果
+        output: 生成结果
         summary: 逆向得到的官方视频总结
         nickname: 发起者昵称
     """
@@ -38,7 +38,7 @@ class VideoCommentUP(core.Langup):
     interval: int = 10
     signals: Optional[List[str]] = ['总结一下']
     reply_temple: str = (
-        '{answer}'
+        '{output}'
         '本条回复由AI生成，'
         '由@{nickname}召唤。'
     )
@@ -61,7 +61,8 @@ class VideoCommentUP(core.Langup):
     @staticmethod
     @chain
     async def react(_dict):
-        content = _dict['reply_temple'].format(answer=_dict['output'], nickname=_dict['user_nickname'])
+        content = _dict['reply_temple'].format(output=_dict['output'], nickname=_dict['user_nickname'])
+        logger.info(f'准备发送文本:{content}')
         await comment.send_comment(text=content, type_=comment.CommentResourceType.VIDEO, oid=_dict['aid'], credential=config.auth.credential)
 
     def run(self):
@@ -85,6 +86,7 @@ class ChatUP(core.Langup):
     @chain
     async def react(_dict):
         msg_type = EventName.PICTURE if isinstance(_dict['output'], Picture) else EventName.TEXT
+        logger.debug(f"发送消息:{_dict['output']}")
         await apis.bilibili.session.send_msg(config.auth.credential, _dict['sender_uid'], msg_type.value, _dict['output'])
 
     def run(self):
@@ -142,10 +144,10 @@ class VtuBer(core.Langup):
 
     @staticmethod
     @chain
-    def filter(_dict):
+    def filter(_dict: dict) -> dict:
         _filter: BanWordsFilter = _dict['self']._ban_word_filter
         if _dict['self'].is_filter:
-            check_keys = ('user_name', 'text', 'answer', 'output')
+            check_keys = ('user_name', 'text', 'output', 'output')
             for key in check_keys:
                 content = _dict.get(key)
                 if kws := _filter.match(content):
@@ -154,7 +156,7 @@ class VtuBer(core.Langup):
 
     @staticmethod
     @chain
-    def route(_dict):
+    def route(_dict: dict):
         self = _dict['self']
         if _dict['type'] in {LiveInputType.danmu, LiveInputType.user}:
             if self._keywords_matcher and (callback := self._keywords_matcher.match(_dict['text'])):
@@ -180,7 +182,7 @@ class VtuBer(core.Langup):
         runer = core.RunManager(
             manager_config=self,
             extra_inputs={'self': self},
-            chain=(self.route | self.filter | self.react),
+            chain=(self.route | self.filter | self.react).with_types(),
         )
         runer.bind_listener(LiveListener(room_id=self.room_id))
         runer.run()

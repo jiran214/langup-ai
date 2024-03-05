@@ -221,3 +221,17 @@ def func(return_data):
         return return_data
 
     return f
+
+
+def set_langchain_debug(v: bool = True):
+    from langchain.globals import set_debug
+    set_debug(v)
+
+
+def set_logger():
+    import logging
+    logger = logging.getLogger('langup')
+    # 给logger添加handler
+    logger.addHandler(logging.StreamHandler())
+    logger.setLevel(logging.DEBUG)
+

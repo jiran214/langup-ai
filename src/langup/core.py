@@ -5,18 +5,22 @@ import asyncio
 import logging
 import os
 import threading
-from typing import Union, Any, Iterable, Optional, Dict, List, Tuple
+from typing import Any, Iterable, Optional, Dict, List, Tuple
 from urllib.request import getproxies
 
 import bilibili_api
 import dotenv
 import openai
 from bilibili_api import sync
-from langchain.chains.base import Chain
+from langchain.globals import set_llm_cache
+from langchain_community.cache import InMemoryCache
+from langchain_core.language_models import BaseChatModel
+from langchain_core.prompts import BasePromptTemplate, ChatPromptTemplate
+from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, model_validator, PrivateAttr
 from langchain_core.runnables import Runnable, chain, RunnableAssign
 
-from langup import config, LLMChain
+from langup import config
 from langup.listener.utils import SchedulerWrapper
 from langup.listener.schema import SchedulingEvent
 from langup.listener.base import Listener
@@ -24,6 +28,17 @@ from langup.utils.consts import WELCOME
 from langup.utils.utils import Continue, get_list, format_print
 
 logger = logging.getLogger('langup')
+
+
+def set_openai_model():
+    chat_model_kwargs = {
+        'max_retries': 1,
+        'request_timeout': 60,
+        **config.auth.openai_kwargs,
+    }
+    _model = ChatOpenAI(**chat_model_kwargs)
+    config.auth.check_openai_config()
+    return _model
 
 
 class Langup(BaseModel):
@@ -35,12 +50,16 @@ class Langup(BaseModel):
     """进阶"""
     retriever_map: Optional[Dict[str, Runnable]] = Field({}, description='langchain检索器map')
     schedulers: Iterable[SchedulingEvent] = Field([], description='调度事件列表')
+    model: BaseChatModel = Field(default_factory=set_openai_model, description="llm")
+    _prompt: BasePromptTemplate = PrivateAttr()
 
-    _chain: Chain = PrivateAttr()
+    def set_cache(self, ):
+        """set_llm_cache(SQLiteCache(database_path=".langchain.db"))"""
+        set_llm_cache(InMemoryCache())
 
-    def set_custom_chain(self, chain: Chain):
-        """自定义chain，system和human会无效"""
-        self._chain = chain
+    @property
+    def _chain(self):
+        return self._prompt | self.model
 
     @model_validator(mode='after')
     def check_prompt(self):
@@ -48,8 +67,11 @@ class Langup(BaseModel):
             assert prompt_var in self.human, f'请在Langup.human中传入{prompt_var}模版变量'
 
     @model_validator(mode='after')
-    def set_chain(self):
-        self._chain = self._chain or LLMChain(self.system, self.human)
+    def __set_prompt(self):
+        self._prompt = ChatPromptTemplate.from_messages([
+            ('system', self.system),
+            ('human', self.human)
+        ])
 
     @staticmethod
     @chain
