@@ -10,7 +10,7 @@ except:
 
 from langup import config
 from langup.uploader.simple import UserInputReplyUP
-from langup.uploader.bilibili import VideoCommentUP, VtuBer, ChatUP
+from langup.uploader.bilibili import VideoCommentUP, VtuBer, ChatUP, DynamicUP
 
 __all__ = [
     'get_cookies',
@@ -18,6 +18,7 @@ __all__ = [
     'set_logger',
 
     'config',
+    'DynamicUP',
     'VideoCommentUP',
     'UserInputReplyUP',
     'VtuBer',

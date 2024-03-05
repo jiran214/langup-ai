@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -90,5 +90,5 @@ class OutlineItem(BaseModel):
 
 class NoteAISummary(BaseModel):
     result_type: int
-    summary: str
-    outline: List[OutlineItem]
+    summary: Optional[str] = None
+    outline: Optional[List[OutlineItem]] = None

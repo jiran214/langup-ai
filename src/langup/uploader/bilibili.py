@@ -4,7 +4,7 @@ import logging
 from operator import itemgetter
 from typing import Optional, List, Iterable
 
-from bilibili_api.dynamic import send_dynamic, BuildDynmaic
+from bilibili_api.dynamic import send_dynamic, BuildDynamic
 from langchain.chains.base import Chain
 from pydantic import PrivateAttr, Field
 
@@ -16,6 +16,8 @@ from langup import core, apis, config
 from langup.apis.bilibili import comment
 from langup.listener.bilibili import ChatListener, SessionAtListener, LiveListener
 from langup.listener.schema import LiveInputType, SchedulingEvent, KeywordReply, EventName
+from langup.utils import converts
+from langup.utils.converts import summary_generator
 from langup.utils.utils import Continue, BanWordsFilter, KeywordsMatcher
 
 logger = logging.getLogger('langup.bilibili')
@@ -36,7 +38,7 @@ class VideoCommentUP(core.Langup):
         '###'
     )
     interval: int = 10
-    signals: Optional[List[str]] = ['总结一下']
+    signals: Optional[List[str]] = ['总结一下']  # 部分暗号会被屏蔽
     reply_temple: str = (
         '{output}'
         '本条回复由AI生成，'
@@ -54,9 +56,20 @@ class VideoCommentUP(core.Langup):
             raise Continue
         # 获取summary
         video = apis.bilibili.video.Video(aid=_dict['aid'], credential=config.auth.credential)
-        logger.info('step1:获取summary')
         summary = await video.get_md_summary()
-        return {'summary': summary, **_dict}
+        logger.debug("Video API 该视频无AI总结，尝试提取字幕")
+        if not summary:
+            video_content_list = await converts.Audio2Text.from_bilibili_video(video)
+            if video.info.duration > 60 * 60:
+                logger.debug(f'过滤,视频时长超出限制: {60 * 60}')
+                raise Continue('提取摘要失败')
+            if not video_content_list:
+                logger.error('查找字幕资源失败')
+                raise Continue('提取摘要失败')
+            summary = summary_generator.generate(video_content_list)
+            record = summary.replace('\n', '')
+            logger.debug(f"获取摘要成功:{record[:10]}...{record[-10:]}")
+        return summary
 
     @staticmethod
     @chain
@@ -70,9 +83,9 @@ class VideoCommentUP(core.Langup):
             manager_config=self,
             extra_inputs={'signals': self.signals, 'reply_temple': self.reply_temple},
             chain=(
-                RunnablePassthrough.assign(summary=self.get_summary) |
-                RunnablePassthrough.assign(output=self._prompt | self.model | StrOutputParser()) |
-                self.react
+                RunnablePassthrough.assign(summary=self.get_summary)
+                | RunnablePassthrough.assign(output=self._prompt | self.model | StrOutputParser())
+                | self.react
             ),
         )
         runer.bind_listener(SessionAtListener())
@@ -102,12 +115,14 @@ class ChatUP(core.Langup):
 
 
 class DynamicUP(core.Langup):
+    system: str = '你是为B站百万UP主'
     schedulers: Iterable[SchedulingEvent] = Field(description='调度事件列表')
 
     @staticmethod
     @chain
     async def react(_content):
-        await send_dynamic(BuildDynmaic.create_by_args(text=_content), credential=config.auth.credential)
+        logger.info(f'发送动态:{_content}')
+        await send_dynamic(BuildDynamic.create_by_args(text=_content), credential=config.auth.credential)
 
     def run(self):
         runer = core.RunManager(
@@ -182,8 +197,7 @@ class VtuBer(core.Langup):
         runer = core.RunManager(
             manager_config=self,
             extra_inputs={'self': self},
-            chain=(self.route | self.filter | self.react).with_types().with_config(RunnableConfig(callbacks=[StdOutCallbackHandler()])
-),
+            chain=(self.route | self.filter | self.react)
         )
         runer.bind_listener(LiveListener(room_id=self.room_id))
         runer.forever_run()

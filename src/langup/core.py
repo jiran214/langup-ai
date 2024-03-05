@@ -13,9 +13,6 @@ import dotenv
 import httpx
 import openai
 from bilibili_api import sync
-from langchain.globals import set_llm_cache
-from langchain_community.cache import InMemoryCache
-from langchain_core.callbacks import Callbacks
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import BasePromptTemplate, ChatPromptTemplate
 from langchain_openai import ChatOpenAI
@@ -30,6 +27,28 @@ from langup.utils.consts import WELCOME
 from langup.utils.utils import Continue, get_list, format_print
 
 logger = logging.getLogger('langup')
+
+
+def first_init():
+    if config.first_init is False:
+        dotenv.load_dotenv(verbose=True)
+        if 'sessdata' in os.environ:
+            config.set_bilibili_config(
+                **{k: os.environ.get(k) for k in ('sessdata', 'buvid3', 'bili_jct', 'dedeuserid', 'ac_time_value')})
+            logger.debug(f'初始化bilibili_config from env: {config.auth.credential.get_cookies()}')
+        if config.welcome_tip:
+            format_print(WELCOME, color='green')
+        if config.test_net:
+            logger.debug('测试外网环境...')
+            requestor, url = openai.Model._ListableAPIResource__prepare_list_requestor()
+            response, _, api_key = requestor.request("get", url, None, None, request_timeout=10)
+        if proxy := (config.proxy or getproxies().get('http')):
+            logger.debug(f'已设置全代理:{proxy}')
+            os.environ['HTTPS_PROXY'] = proxy
+            os.environ['HTTP_PROXY'] = proxy
+            bilibili_api.settings.proxy = proxy
+        logger.debug(f"代理环境 https:{os.environ.get('HTTPS_PROXY')} http:{os.environ.get('HTTP_PROXY')}")
+    config.first_init = True
 
 
 def set_openai_model():
@@ -111,24 +130,8 @@ class RunManager(BaseModel):
 
     def model_post_init(self, __context: Any) -> None:
         # 初始化
-        if config.first_init is False:
-            logger.debug('初始化RunManager')
-            dotenv.load_dotenv(verbose=True)
-            if 'sessdata' in os.environ:
-                config.set_bilibili_config(**{k: os.environ.get(k) for k in ('sessdata', 'buvid3', 'bili_jct', 'dedeuserid', 'ac_time_value')})
-                logger.debug(f'初始化bilibili_config from env: {config.auth.credential.get_cookies()}')
-            if config.welcome_tip:
-                format_print(WELCOME, color='green')
-            if config.test_net:
-                logger.debug('测试外网环境...')
-                requestor, url = openai.Model._ListableAPIResource__prepare_list_requestor()
-                response, _, api_key = requestor.request("get", url, None, None, request_timeout=10)
-            if config.proxy:
-                os.environ['HTTPS_PROXY'] = config.proxy
-                os.environ['HTTP_PROXY'] = config.proxy
-                bilibili_api.settings.proxy = config.proxy
-            logger.debug(f"代理环境 https:{os.environ.get('HTTPS_PROXY')} http:{os.environ.get('HTTP_PROXY')}")
-        config.first_init = True
+        logger.debug('初始化RunManager')
+        first_init()
         if self.manager_config.retriever_map:
             self.chain = (RunnableAssign(**self.manager_config.retriever_map) | self.chain)
         # 调度监听

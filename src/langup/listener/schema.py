@@ -74,16 +74,16 @@ class SchedulingEvent(BaseModel):
             else:
                 self.trigger = 'interval'
                 if 's' in self.time:
-                    self.trigger_kwargs['second'] = int(self.time.replace('s', ''))
-                if 'h' in self.time:
-                    self.trigger_kwargs['hour'] = int(self.time.replace('h', ''))
-                if 'm' in self.time:
-                    self.trigger_kwargs['minute'] = int(self.time.replace('m', ''))
+                    self.trigger_kwargs['seconds'] = int(self.time.replace('s', ''))
+                elif 'h' in self.time:
+                    self.trigger_kwargs['hours'] = int(self.time.replace('h', ''))
+                elif 'm' in self.time:
+                    self.trigger_kwargs['minutes'] = int(self.time.replace('m', ''))
                 else:
                     raise ValidationError('间隔任务以s h m 结尾')
 
     def get_scheduler_inputs(self):
-        return {'job': func(self.input), 'trigger': self.trigger, **self.trigger_kwargs}
+        return {'func': func(self.input), 'trigger': self.trigger, **self.trigger_kwargs}
 
 
 class KeywordReply(BaseModel):

@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Optional, List, Any
 from bilibili_api.session import Event
 from bilibili_api import bvid2aid
@@ -26,6 +27,7 @@ def note_query_2_aid(note_query: str):
 
 class SessionAtListener(Listener):
     newest_at_time: int = 0
+    # newest_at_time: int = int(time.time())
     aid_record_map: set = set()
 
     def check_config(self):
@@ -36,16 +38,16 @@ class SessionAtListener(Listener):
         items = sessions['items']
         if not items:
             return
-        schema_list = []
-        item = items[-1]
+        item = items[0]
+        user_nickname = item['user']['nickname']
+        source_content = item['item']['source_content']
+        at_time = item['at_time']
+        logger.debug(f"最新消息:{at_time=} {user_nickname=} {source_content=}")
         at_type = item['item']['type']
         if at_type != 'reply':
             return
-        at_time = item['at_time']
         if at_time <= self.newest_at_time:
             return
-        user_nickname = item['user']['nickname']
-        source_content = item['item']['source_content']
         uri = item['item']['uri']
         source_id = item['item']['source_id']
         bvid = "BV" + uri.split("BV")[1]

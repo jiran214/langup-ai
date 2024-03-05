@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import datetime
+import logging
 import os
 from typing import Optional, List
 
@@ -16,6 +17,7 @@ session.headers = {
     'origin': "https://www.bilibili.com",
 }
 session.trust_env = False
+logger = logging.getLogger('langup.api')
 
 
 def trans_time(timestamp):
@@ -97,6 +99,11 @@ class Video(video.Video):
         """格式化总结内容成md"""
         if not self.__summary_info:
             await self.get_ai_summary()
+
+        # 部分视频没有AI总结，返回None 利用视频转文字
+        if not (self.__summary_info.outline or self.__summary_info.summary):
+            return
+
         md = (
             "## {title}\n"
             "author: {author}\n"

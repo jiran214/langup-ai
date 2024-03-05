@@ -94,5 +94,4 @@ set_openai_config = auth.set_openai_config
 proxy = None
 test_net = False
 welcome_tip = False
-
 first_init = False
