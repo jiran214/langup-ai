@@ -5,7 +5,7 @@ from typing import Literal
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import chain, RunnablePassthrough, RunnableLambda
 
-from langup import core, LLMChain, apis
+from langup import core, apis
 from langup.listener.user import ConsoleListener, SpeechListener
 from langup.utils import utils
 
@@ -36,7 +36,7 @@ class UserInputReplyUP(core.Langup):
             extra_inputs={'name': self.name, 'listen': self.listen},
             manager_config=self,
             chain=(
-                RunnablePassthrough.assign(output=LLMChain(self.system, self.human) | StrOutputParser())
+                RunnablePassthrough.assign(output=self._chain | StrOutputParser())
                 | self.react | RunnableLambda(lambda _: user_listener.user_event.set())
             ),
         )

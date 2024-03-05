@@ -11,7 +11,6 @@ import httpx
 from bilibili_api import Credential
 
 
-credential: Union['Credential', None] = None
 work_dir = './'
 
 # 声音配置

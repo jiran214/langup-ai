@@ -4,21 +4,21 @@ import logging
 from operator import itemgetter
 from typing import Optional, List, Iterable
 
+from bilibili_api.dynamic import send_dynamic, BuildDynmaic
 from langchain.chains.base import Chain
-from langchain_core.retrievers import BaseRetriever
 from pydantic import PrivateAttr, Field
 
-from bilibili_api import sync, Picture
+from bilibili_api import Picture
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough, chain
 
-from langup import core, listener, apis, config
+from langup import core, apis, config
 from langup.apis.bilibili import comment
+from langup.listener.bilibili import ChatListener, SessionAtListener, LiveListener
 from langup.listener.schema import LiveInputType, SchedulingEvent, KeywordReply, EventName
-from langup.chains import LLMChain
 from langup.utils.utils import Continue, BanWordsFilter, KeywordsMatcher
 
-logger = logging.getLogger('langup')
+logger = logging.getLogger('langup.bilibili')
 
 
 class VideoCommentUP(core.Langup):
@@ -70,33 +70,50 @@ class VideoCommentUP(core.Langup):
             extra_inputs={'signals': self.signals, 'reply_temple': self.reply_temple},
             chain=(
                 RunnablePassthrough.assign(summary=self.get_summary) |
-                RunnablePassthrough.assign(output=LLMChain(self.system, self.human) | StrOutputParser()) |
+                RunnablePassthrough.assign(output=self._chain | StrOutputParser()) |
                 self.react
             ),
         )
-        runer.bind_listener(listener.SessionAtListener())
+        runer.bind_listener(SessionAtListener())
         runer.run()
 
 
 class ChatUP(core.Langup):
     system: str = '你是一位聊天AI助手'
-    interval: int = 5
 
     @staticmethod
     @chain
     async def react(_dict):
         msg_type = EventName.PICTURE if isinstance(_dict['output'], Picture) else EventName.TEXT
-        await apis.bilibili.session.send_msg(config.credential, _dict['sender_uid'], msg_type.value, _dict['output'])
+        await apis.bilibili.session.send_msg(config.auth.credential, _dict['sender_uid'], msg_type.value, _dict['output'])
 
     def run(self):
         runer = core.RunManager(
             manager_config=self,
             chain=(
-                {'output': LLMChain(self.system, self.human) | StrOutputParser(), 'sender_uid': itemgetter('sender_uid')}
+                {'output': self._chain | StrOutputParser(), 'sender_uid': itemgetter('sender_uid')}
                 | self.react
             ),
         )
-        runer.bind_listener(listener.ChatListener())
+        runer.bind_listener(ChatListener())
+        runer.run()
+
+
+class DynamicUP(core.Langup):
+    schedulers: Iterable[SchedulingEvent] = Field(description='调度事件列表')
+
+    @staticmethod
+    @chain
+    async def react(_content):
+        await send_dynamic(BuildDynmaic.create_by_args(text=_content), credential=config.auth.credential)
+
+    def run(self):
+        runer = core.RunManager(
+            manager_config=self,
+            chain=(
+                self._chain | StrOutputParser() | self.react
+            ),
+        )
         runer.run()
 
 
@@ -145,7 +162,7 @@ class VtuBer(core.Langup):
                     return callback
                 if isinstance(callback, Chain):
                     return callback.invoke(_dict)
-            _chain = LLMChain(self.system, self.human) | StrOutputParser()
+            _chain = self._chain | StrOutputParser()
             return chain
         elif _dict['type'] is {LiveInputType.direct, LiveInputType.gift}:
             return _dict['text']
@@ -165,5 +182,8 @@ class VtuBer(core.Langup):
             extra_inputs={'self': self},
             chain=(self.route | self.filter | self.react),
         )
-        runer.bind_listener(listener.LiveListener(room_id=self.room_id))
+        runer.bind_listener(LiveListener(room_id=self.room_id))
         runer.run()
+
+
+

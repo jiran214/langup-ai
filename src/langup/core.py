@@ -12,10 +12,11 @@ import bilibili_api
 import dotenv
 import openai
 from bilibili_api import sync
-from pydantic import BaseModel, Field, model_validator
+from langchain.chains.base import Chain
+from pydantic import BaseModel, Field, model_validator, PrivateAttr
 from langchain_core.runnables import Runnable, chain, RunnableAssign
 
-from langup import config
+from langup import config, LLMChain
 from langup.listener.utils import SchedulerWrapper
 from langup.listener.schema import SchedulingEvent
 from langup.listener.base import Listener
@@ -29,14 +30,26 @@ class Langup(BaseModel):
     system: str
     human: str = '{text}'
 
+    interval: int = 0
+
+    """进阶"""
     retriever_map: Optional[Dict[str, Runnable]] = Field({}, description='langchain检索器map')
     schedulers: Iterable[SchedulingEvent] = Field([], description='调度事件列表')
-    interval: int = 0
+
+    _chain: Chain = PrivateAttr()
+
+    def set_custom_chain(self, chain: Chain):
+        """自定义chain，system和human会无效"""
+        self._chain = chain
 
     @model_validator(mode='after')
     def check_prompt(self):
         for prompt_var in self.retriever_map:
             assert prompt_var in self.human, f'请在Langup.human中传入{prompt_var}模版变量'
+
+    @model_validator(mode='after')
+    def set_chain(self):
+        self._chain = self._chain or LLMChain(self.system, self.human)
 
     @staticmethod
     @chain
