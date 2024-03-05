@@ -17,10 +17,10 @@ class SchedulerWrapper(Listener):
 
     def model_post_init(self, __context: Any) -> None:
         # 添加回调，将job结果暂存到mq
-        self._scheduler.add_listener(lambda e: self.mq.put(e.retval), EVENT_JOB_EXECUTED)
+        self.scheduler.add_listener(lambda e: self.mq.put(e.retval), EVENT_JOB_EXECUTED)
 
     def run(self):
-        self._scheduler.start()
+        self.scheduler.start()
 
     async def alisten(self):
         return self.mq.recv()

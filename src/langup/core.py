@@ -5,7 +5,7 @@ import asyncio
 import logging
 import os
 import threading
-from typing import Any, Iterable, Optional, Dict, List, Tuple
+from typing import Any, Iterable, Optional, Dict, List, Tuple, Union
 from urllib.request import getproxies
 
 import bilibili_api
@@ -14,11 +14,12 @@ import openai
 from bilibili_api import sync
 from langchain.globals import set_llm_cache
 from langchain_community.cache import InMemoryCache
+from langchain_core.callbacks import Callbacks
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import BasePromptTemplate, ChatPromptTemplate
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, model_validator, PrivateAttr
-from langchain_core.runnables import Runnable, chain, RunnableAssign
+from langchain_core.runnables import Runnable, chain, RunnableAssign, RunnableConfig
 
 from langup import config
 from langup.listener.utils import SchedulerWrapper
@@ -51,15 +52,15 @@ class Langup(BaseModel):
     retriever_map: Optional[Dict[str, Runnable]] = Field({}, description='langchain检索器map')
     schedulers: Iterable[SchedulingEvent] = Field([], description='调度事件列表')
     model: BaseChatModel = Field(default_factory=set_openai_model, description="llm")
+    runnable_config: Optional[RunnableConfig] = None
     _prompt: BasePromptTemplate = PrivateAttr()
 
     def set_cache(self, ):
-        """set_llm_cache(SQLiteCache(database_path=".langchain.db"))"""
-        set_llm_cache(InMemoryCache())
-
-    @property
-    def _chain(self):
-        return self._prompt | self.model
+        """
+            set_llm_cache(InMemoryCache())
+            set_llm_cache(SQLiteCache(database_path=".langchain.db"))
+        """
+        pass
 
     @model_validator(mode='after')
     def check_prompt(self):
@@ -112,8 +113,9 @@ class RunManager(BaseModel):
             else:
                 # 系统代理手动设置
                 global_proxies = getproxies()
-                os.environ['HTTPS_PROXY'] = global_proxies.get('https') and global_proxies['https'].replace('https', 'http')
-                os.environ['HTTP_PROXY'] = global_proxies.get('http')
+                if global_proxies:
+                    os.environ['HTTPS_PROXY'] = global_proxies.get('https') and global_proxies['https'].replace('https', 'http')
+                    os.environ['HTTP_PROXY'] = global_proxies.get('http')
 
             logger.debug(f"代理环境 https:{os.environ.get('HTTPS_PROXY')} http:{os.environ.get('HTTP_PROXY')}")
         config.first_init = True
@@ -146,7 +148,7 @@ class RunManager(BaseModel):
                         data_dict = res
                     inputs = {**data_dict, **self.extra_inputs}
                     logger.debug(f'运行中chain {inputs=}')
-                    await self.chain.ainvoke(inputs)
+                    await self.chain.ainvoke(inputs, config=self.manager_config.runnable_config or {})
                 except Continue as e:
                     logger.info(f'已过滤:{e}')
                     continue
@@ -156,7 +158,7 @@ class RunManager(BaseModel):
     def bind_listener(self, l: Listener, thread_num=1):
         self.listener_items.append((l, thread_num))
 
-    def run(self):
+    def forever_run(self):
         """一个listener对应一个线程运行，对应多个aconnect协程"""
         logger.debug('开始运行RunManager')
         assert self.listener_items, '未设置 listeners'
@@ -178,6 +180,12 @@ class RunManager(BaseModel):
             t.join()
 
         return threads
+
+    def run(self, _input):
+        if isinstance(_input, dict):
+            _input.update(self.extra_inputs)
+        logger.debug(f'运行中chain {_input=}')
+        return await self.chain.ainvoke(_input, config=self.manager_config.runnable_config or {})
 
     class Config:
         arbitrary_types_allowed = True

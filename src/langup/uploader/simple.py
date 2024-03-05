@@ -36,10 +36,10 @@ class UserInputReplyUP(core.Langup):
             extra_inputs={'name': self.name, 'listen': self.listen},
             manager_config=self,
             chain=(
-                RunnablePassthrough.assign(output=self._chain | StrOutputParser())
+                RunnablePassthrough.assign(output=self._prompt | self.model | StrOutputParser())
                 | self.react | RunnableLambda(lambda _: user_listener.user_event.set())
             ),
         )
         runer.bind_listener(user_listener)
         user_listener.user_event.set()
-        runer.run()
+        runer.forever_run()

@@ -27,7 +27,7 @@ def ffmpeg_render(media_file: str) -> bytes:
     out, err = (ffmpeg
                 .input(media_file, v='warning')
                 .output('pipe:', ac=1, format='adts')
-                .run(capture_stdout=True)
+                .forever_run(capture_stdout=True)
                 )
     return out
 

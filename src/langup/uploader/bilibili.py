@@ -10,7 +10,7 @@ from pydantic import PrivateAttr, Field
 
 from bilibili_api import Picture
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough, chain
+from langchain_core.runnables import RunnablePassthrough, chain, RunnableConfig
 
 from langup import core, apis, config
 from langup.apis.bilibili import comment
@@ -71,12 +71,12 @@ class VideoCommentUP(core.Langup):
             extra_inputs={'signals': self.signals, 'reply_temple': self.reply_temple},
             chain=(
                 RunnablePassthrough.assign(summary=self.get_summary) |
-                RunnablePassthrough.assign(output=self._chain | StrOutputParser()) |
+                RunnablePassthrough.assign(output=self._prompt | self.model | StrOutputParser()) |
                 self.react
             ),
         )
         runer.bind_listener(SessionAtListener())
-        runer.run()
+        runer.forever_run()
 
 
 class ChatUP(core.Langup):
@@ -93,12 +93,12 @@ class ChatUP(core.Langup):
         runer = core.RunManager(
             manager_config=self,
             chain=(
-                {'output': self._chain | StrOutputParser(), 'sender_uid': itemgetter('sender_uid')}
+                {'output': self._prompt | self.model | StrOutputParser(), 'sender_uid': itemgetter('sender_uid')}
                 | self.react
             ),
         )
         runer.bind_listener(ChatListener())
-        runer.run()
+        runer.forever_run()
 
 
 class DynamicUP(core.Langup):
@@ -113,10 +113,10 @@ class DynamicUP(core.Langup):
         runer = core.RunManager(
             manager_config=self,
             chain=(
-                self._chain | StrOutputParser() | self.react
+                self._prompt | self.model | StrOutputParser() | self.react
             ),
         )
-        runer.run()
+        runer.forever_run()
 
 
 class VtuBer(core.Langup):
@@ -164,7 +164,7 @@ class VtuBer(core.Langup):
                     return callback
                 if isinstance(callback, Chain):
                     return callback.invoke(_dict)
-            _chain = self._chain | StrOutputParser()
+            _chain = self._prompt | self.model | StrOutputParser()
             return chain
         elif _dict['type'] is {LiveInputType.direct, LiveInputType.gift}:
             return _dict['text']
@@ -182,10 +182,11 @@ class VtuBer(core.Langup):
         runer = core.RunManager(
             manager_config=self,
             extra_inputs={'self': self},
-            chain=(self.route | self.filter | self.react).with_types(),
+            chain=(self.route | self.filter | self.react).with_types().with_config(RunnableConfig(callbacks=[StdOutCallbackHandler()])
+),
         )
         runer.bind_listener(LiveListener(room_id=self.room_id))
-        runer.run()
+        runer.forever_run()
 
 
 
