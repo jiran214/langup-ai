@@ -15,7 +15,7 @@ pip install langup==0.0.10
 ```
 
 ## 快速开始
-- 安装完成后，新建xxx.py文件参考以下代码（注意：采用方式二安装时，可以在src/下新建）
+- 安装完成后，新建xxx.py文件参考以下代码
 - 所有代码示例 src/examples可见
 
 <details>
@@ -137,6 +137,29 @@ ChatUP(system='你是一位聊天AI助手').run()
 </details>
 
 <details>
+    <summary>B站私信聊天机器人</summary>
+<br>
+
+```python
+from langup import DynamicUP
+
+# 需要配置Bilibili、OpenAI
+# ...
+
+from langup.listener.schema import SchedulingEvent
+from langup import DynamicUP
+
+
+DynamicUP(
+  schedulers=[
+    SchedulingEvent(input='请感谢大家的关注！', time='10m'),  # 每隔10分钟生成一条动态
+    SchedulingEvent(input='请感谢大家的关注！', time='0:36')  # 0:36 生成一条动态
+  ]
+).run()
+```
+</details>
+
+<details>
     <summary>实时语音交互助手</summary>
 
 ```python
@@ -168,10 +191,22 @@ UserInputReplyUP(system='你是一位AI助手', listen='console').run()
 
 
 <details>
+    <summary>进阶</summary>
+</details>
+
+替换llm模型
+定时任务
+关键词触发
+注入知识
+配置langchain callback
+设置llm缓存
+
+<details>
     <summary>其它</summary>
 
 - 国内环境需要设置代理 `langup.config.set_openai_config(openai_proxy='http://127.0.0.1:7890')`
 - 查看debug日志方式 `langup.set_logger()`
+- 查看langchain日志方式 `langup.set_langchain_debug()`
 </details>
 
 

@@ -1,7 +1,7 @@
 edge_tts==6.1.8
-bilibili-api-python==16.1.1
+bilibili-api-python==16.2
 openai==0.28.0
-langchain==0.1.10
+langchain==0.1.11
 ratelimit==2.2.1
 pygame~=2.5.1
 scipy==1.8
