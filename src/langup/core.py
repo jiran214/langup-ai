@@ -5,17 +5,15 @@ import asyncio
 import logging
 import os
 import threading
-from typing import Any, Iterable, Optional, Dict, List, Tuple, Union
+from typing import Any, Iterable, Optional, Dict, List, Tuple
 from urllib.request import getproxies
 
 import bilibili_api
 import dotenv
-import httpx
 import openai
 from bilibili_api import sync
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import BasePromptTemplate, ChatPromptTemplate
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field, model_validator, PrivateAttr
 from langchain_core.runnables import Runnable, chain, RunnableAssign, RunnableConfig
 
@@ -24,6 +22,7 @@ from langup.listener.utils import SchedulerWrapper
 from langup.listener.schema import SchedulingEvent
 from langup.listener.base import Listener
 from langup.utils.consts import WELCOME
+from langup.utils.models import set_openai_model
 from langup.utils.utils import Continue, get_list, format_print
 
 logger = logging.getLogger('langup')
@@ -51,29 +50,6 @@ def first_init():
     config.first_init = True
 
 
-def set_openai_model():
-    proxies = None
-    if openai_proxy := config.auth.openai_kwargs.get('openai_proxy'):
-        proxies = {'http://': openai_proxy, 'https://': openai_proxy}
-    elif global_proxies := getproxies():
-        proxies = {
-            'http://': global_proxies['http'],
-            'https://': global_proxies['http'],
-        }
-        os.environ['HTTPS_PROXY'] = global_proxies['http']
-        os.environ['HTTP_PROXY'] = global_proxies['http']
-
-    chat_model_kwargs = {
-        'max_retries': 1,
-        'http_client': proxies and httpx.AsyncClient(proxies=proxies),
-        'request_timeout': 60,
-        **config.auth.openai_kwargs,
-    }
-    _model = ChatOpenAI(**chat_model_kwargs)
-    config.auth.check_openai_config()
-    return _model
-
-
 class Langup(BaseModel):
     system: str
     human: str = '{text}'
@@ -85,6 +61,7 @@ class Langup(BaseModel):
     schedulers: Iterable[SchedulingEvent] = Field([], description='调度事件列表')
     model: BaseChatModel = Field(default_factory=set_openai_model, description="llm")
     runnable_config: Optional[RunnableConfig] = None
+
     _prompt: BasePromptTemplate = PrivateAttr()
 
     def set_cache(self):
@@ -124,7 +101,7 @@ class Langup(BaseModel):
 
 class RunManager(BaseModel):
     chain: Runnable
-    manager_config: Any  # 类型Langup有bug
+    manager_config: Langup
     extra_inputs: dict = {}
     listener_items: List[Tuple[Listener, int]] = []
 
@@ -132,11 +109,15 @@ class RunManager(BaseModel):
         # 初始化
         logger.debug('初始化RunManager')
         first_init()
+        self.set_plugin()
+
+    def set_plugin(self):
         if self.manager_config.retriever_map:
+            logger.debug('初始化plugin retriever_map')
             self.chain = (RunnableAssign(**self.manager_config.retriever_map) | self.chain)
         # 调度监听
         if self.manager_config.schedulers:
-            logger.debug('初始化sche_listener')
+            logger.debug('初始化plugin schedulers')
             sche_listener = SchedulerWrapper()
             for e in self.manager_config.schedulers:
                 sche_listener.scheduler.add_job(**e.get_scheduler_inputs())

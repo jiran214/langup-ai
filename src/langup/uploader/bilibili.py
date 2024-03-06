@@ -115,7 +115,7 @@ class ChatUP(core.Langup):
 
 
 class DynamicUP(core.Langup):
-    system: str = '你是为B站百万UP主'
+    system: str = '你是位B站百万UP主'
     schedulers: Iterable[SchedulingEvent] = Field(description='调度事件列表')
 
     @staticmethod

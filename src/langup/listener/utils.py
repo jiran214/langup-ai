@@ -5,7 +5,7 @@ from typing import Any, Callable, Literal
 
 from apscheduler.events import EVENT_JOB_EXECUTED
 from apscheduler.schedulers.background import BackgroundScheduler
-from pydantic import Field, BaseModel
+from pydantic import Field
 
 from langup.listener.base import Listener
 from langup.utils.utils import SimpleMQ
