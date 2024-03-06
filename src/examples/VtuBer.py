@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 from langup import VtuBer
 
-from langup import SchedulingEvent, LiveInputType, KeywordReply
+from langup.listener.schema import SchedulingEvent, LiveInputType, KeywordReply
 
 # 需要配置Bilibili、OpenAI
 # ...
@@ -18,7 +18,7 @@ up = VtuBer(
     # extra_ban_words=[],  # 额外的违禁词
     ## 关键词指定回复
     # keyword_replies=[KeywordReply(keyword='是AI', content='我不是AI我是真人')],
-    # keyword_replies=[KeywordReply(keyword='点歌', content=<Chain: MusicChain>)],
+    # keyword_replies=[KeywordReply(keyword='点歌', content=<eg: MusicChain>)],
     ## 调度任务，模拟listener输出
     # schedulers=[
     #   SchedulingEvent(input={'type': LiveInputType.user, 'text': '给粉丝讲一个冷笑话'}, time='9:11'),  #  9:11分的时候gpt生成"live_input"的回复

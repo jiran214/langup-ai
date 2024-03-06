@@ -26,8 +26,8 @@ def note_query_2_aid(note_query: str):
 
 
 class SessionAtListener(Listener):
-    newest_at_time: int = 0
-    # newest_at_time: int = int(time.time())
+    # newest_at_time: int = 0
+    newest_at_time: int = int(time.time())
     aid_record_map: set = set()
 
     def check_config(self):

@@ -1,5 +1,9 @@
 from langup.utils.utils import get_cookies, set_langchain_debug, set_logger
 
+
+__version__ = '0.0.2'
+
+
 try:
     from langchain.chains.base import Chain
 except:
