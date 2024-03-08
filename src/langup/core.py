@@ -5,7 +5,8 @@ import asyncio
 import logging
 import os
 import threading
-from typing import Any, Iterable, Optional, Dict, List, Tuple, Union, Callable
+from queue import Queue
+from typing import Any, Iterable, Optional, Dict, List, Tuple, Union, Callable, Generator, AsyncGenerator
 from urllib.request import getproxies
 
 import bilibili_api
@@ -18,7 +19,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import BasePromptTemplate, ChatPromptTemplate
 from langchain_core.retrievers import BaseRetriever
 from pydantic import BaseModel, Field, model_validator, PrivateAttr
-from langchain_core.runnables import Runnable, chain, RunnableAssign, RunnableConfig, RunnableParallel, RunnableLambda
+from langchain_core.runnables import Runnable, chain, RunnableAssign, RunnableConfig, RunnableParallel, RunnableLambda, RunnablePassthrough
 
 from langup import config
 from langup.listener.utils import SchedulerWrapper
@@ -224,3 +225,32 @@ class RunManager(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+
+class Process:
+    def __init__(self):
+        self.threads = []
+
+    def add_thread(self, generator: Union[Generator, AsyncGenerator], handler):
+        def sync_gen_task():
+            for msg in generator:
+                handler.invoke(msg)
+
+        async def async_gen_task():
+            async for msg in generator:
+                await handler.ainvoke(msg)
+
+        if isinstance(generator, Generator):
+            task = sync_gen_task
+        elif isinstance(generator, AsyncGenerator):
+            task = sync(async_gen_task())
+        else:
+            raise ValueError(f'不支持的类型:{type(generator)}')
+        self.threads.append(threading.Thread(target=task))
+
+    def run(self):
+        for t in self.threads:
+            t.start()
+        for t in self.threads:
+            t.join()
+
