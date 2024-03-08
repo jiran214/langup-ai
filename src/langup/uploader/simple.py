@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-from typing import Literal
+from typing import Literal, List, Callable, Union, Any, Iterable
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import chain, RunnablePassthrough, RunnableLambda
 
 from langup import core, apis
+from langup.listener.base import Listener
 from langup.listener.user import ConsoleListener, SpeechListener
 from langup.utils import utils
 
@@ -13,7 +14,6 @@ _user_listener_map = {
     'console': ConsoleListener,
     'speech': SpeechListener
 }
-
 
 logger = logging.getLogger('langup.simple')
 
@@ -36,10 +36,22 @@ class UserInputReplyUP(core.Langup):
             extra_inputs={'name': self.name, 'listen': self.listen},
             manager_config=self,
             chain=(
-                RunnablePassthrough.assign(output=self._prompt | self.model | StrOutputParser())
-                | self.react | RunnableLambda(lambda _: user_listener.user_event.set())
+                    RunnablePassthrough.assign(output=self._prompt | self.model | StrOutputParser())
+                    | self.react | RunnableLambda(lambda _: user_listener.user_event.set())
             ),
         )
         runer.bind_listener(user_listener)
         user_listener.user_event.set()
+        runer.forever_run()
+
+
+class UP(core.Langup):
+    listeners: List[Listener]
+    react_funcs: List[Callable[[Union[str, dict]], Any]]
+
+    def run(self):
+        runer = core.RunManager(
+            manager_config=self,
+            chain=(self._prompt | self.model | chain(self.react_func))
+        )
         runer.forever_run()

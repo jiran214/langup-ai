@@ -13,7 +13,7 @@ except:
 
 
 from langup import config
-from langup.uploader.simple import UserInputReplyUP
+from langup.uploader.simple import UserInputReplyUP, UP
 from langup.uploader.bilibili import VideoCommentUP, VtuBer, ChatUP, DynamicUP
 
 __all__ = [
@@ -21,6 +21,7 @@ __all__ = [
     'set_langchain_debug',
     'set_logger',
 
+    'UP',
     'config',
     'DynamicUP',
     'VideoCommentUP',

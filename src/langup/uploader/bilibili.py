@@ -14,6 +14,7 @@ from langchain_core.runnables import RunnablePassthrough, chain, RunnableConfig
 
 from langup import core, apis, config
 from langup.apis.bilibili import comment
+from langup.listener.base import Listener
 from langup.listener.bilibili import ChatListener, SessionAtListener, LiveListener
 from langup.listener.schema import LiveInputType, SchedulingEvent, KeywordReply, EventName
 from langup.utils import converts

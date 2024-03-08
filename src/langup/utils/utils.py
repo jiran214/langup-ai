@@ -11,6 +11,7 @@ from typing import Optional, Any, Literal, Callable, List, Union
 import browser_cookie3
 from bilibili_api import sync
 from langchain.chains.base import Chain
+from langchain_core.runnables import RunnableLambda, Runnable
 from pydantic import BaseModel
 
 from langup import config

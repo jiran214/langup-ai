@@ -5,17 +5,20 @@ import asyncio
 import logging
 import os
 import threading
-from typing import Any, Iterable, Optional, Dict, List, Tuple
+from typing import Any, Iterable, Optional, Dict, List, Tuple, Union, Callable
 from urllib.request import getproxies
 
 import bilibili_api
 import dotenv
 import openai
 from bilibili_api import sync
+from langchain.globals import set_llm_cache
+from langchain_community.cache import InMemoryCache
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import BasePromptTemplate, ChatPromptTemplate
+from langchain_core.retrievers import BaseRetriever
 from pydantic import BaseModel, Field, model_validator, PrivateAttr
-from langchain_core.runnables import Runnable, chain, RunnableAssign, RunnableConfig
+from langchain_core.runnables import Runnable, chain, RunnableAssign, RunnableConfig, RunnableParallel, RunnableLambda
 
 from langup import config
 from langup.listener.utils import SchedulerWrapper
@@ -57,9 +60,11 @@ class Langup(BaseModel):
     interval: int = 0
 
     """进阶"""
-    retriever_map: Optional[Dict[str, Runnable]] = Field({}, description='langchain检索器map')
+    retriever_map: Optional[Dict[str, Union[Runnable, BaseRetriever]]] = Field({}, description='langchain数据连接器map')
     schedulers: Iterable[SchedulingEvent] = Field([], description='调度事件列表')
-    model: BaseChatModel = Field(default_factory=set_openai_model, description="llm")
+    listeners: List[Listener] = Field([], description='额外监听器')
+    react_funcs: List[Callable[[Union[str, dict]], Any]] = Field([], description='额外行为')
+    model: Union[BaseChatModel, Runnable] = Field(default_factory=set_openai_model, description="langchain语言模型类")
     runnable_config: Optional[RunnableConfig] = None
 
     _prompt: BasePromptTemplate = PrivateAttr()
@@ -69,7 +74,7 @@ class Langup(BaseModel):
             set_llm_cache(InMemoryCache())
             set_llm_cache(SQLiteCache(database_path=".langchain.db"))
         """
-        pass
+        set_llm_cache(InMemoryCache())
 
     @model_validator(mode='after')
     def check_prompt(self):
@@ -87,7 +92,6 @@ class Langup(BaseModel):
 
     @staticmethod
     @chain
-    @abc.abstractmethod
     async def react(_dict):
         pass
 
@@ -112,6 +116,21 @@ class RunManager(BaseModel):
         self.set_plugin()
 
     def set_plugin(self):
+        _ = (self.bind_listener(l) for l in self.manager_config.listeners)
+        # 设置额外行为
+        if self.manager_config.react_funcs:
+            if hasattr(self.chain, 'last'):
+                logger.info('初始化plugin react_funcs')
+                _chain_kwargs = {}
+                if self.chain.last.name == 'react':
+                    _chain_kwargs['_react'] = self.chain.last
+                for func in self.manager_config.react_funcs:
+                    _chain_kwargs[func.__name__] = RunnableLambda(func)
+                self.chain.last = RunnableParallel(_chain_kwargs)
+            else:
+                logger.info('chain找不到last节点 不支持react_funcs')
+
+        # 设置数据源
         if self.manager_config.retriever_map:
             logger.debug('初始化plugin retriever_map')
             self.chain = (RunnableAssign(**self.manager_config.retriever_map) | self.chain)
