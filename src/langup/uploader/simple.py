@@ -10,6 +10,7 @@ from langup import core, apis
 from langup.listener.base import Listener
 from langup.listener.user import ConsoleListener, SpeechListener
 from langup.utils import utils
+from langup.utils.utils import ReactType
 
 _user_listener_map = {
     'console': ConsoleListener,
@@ -47,23 +48,24 @@ class UserInputReplyUP(core.Langup):
 
 
 class UP(core.Langup):
-    react: Optional[Callable[[Union[str, dict]], Any]] = None
-    listener: Optional[Listener] = None
+    listen: Optional[Listener] = None
+    react: Optional[ReactType] = None
+
     listeners: List[Listener] = []
-    react_funcs: List[Callable[[Union[str, dict]], Any]] = []
+    react_funcs: List[ReactType] = []
 
     @model_validator(mode='after')
     def set_attrs(self):
         if self.react:
             self.react_funcs.append(self.react)
-        if self.listener:
-            self.listeners.append(self.listener)
+        if self.listen:
+            self.listeners.append(self.listen)
         assert self.listeners and self.react_funcs, '未设置感知和行为'
         return self
 
     def run(self):
         runer = core.RunManager(
             manager_config=self,
-            chain=(self._prompt | self.model | chain(self.react_func))
+            chain=(self._prompt | self.model)
         )
         runer.forever_run()

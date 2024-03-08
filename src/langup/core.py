@@ -125,7 +125,9 @@ class RunManager(BaseModel):
                 if self.chain.last.name == 'react':
                     _chain_kwargs['_react'] = self.chain.last
                 for func in self.manager_config.react_funcs:
-                    _chain_kwargs[func.__name__] = RunnableLambda(func)
+                    if not isinstance(func, Runnable):
+                        func = RunnableLambda(func)
+                    _chain_kwargs[func.__name__] = func
                 self.chain.last = RunnableParallel(_chain_kwargs)
             else:
                 logger.info('chain找不到last节点 不支持react_funcs')
