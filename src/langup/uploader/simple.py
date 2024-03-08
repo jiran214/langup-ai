@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-from typing import Literal, List, Callable, Union, Any, Iterable
+from typing import Literal, List, Callable, Union, Any, Iterable, Optional
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import chain, RunnablePassthrough, RunnableLambda
+from pydantic import model_validator
 
 from langup import core, apis
 from langup.listener.base import Listener
@@ -46,8 +47,19 @@ class UserInputReplyUP(core.Langup):
 
 
 class UP(core.Langup):
-    listeners: List[Listener]
-    react_funcs: List[Callable[[Union[str, dict]], Any]]
+    react: Optional[Callable[[Union[str, dict]], Any]] = None
+    listener: Optional[Listener] = None
+    listeners: List[Listener] = []
+    react_funcs: List[Callable[[Union[str, dict]], Any]] = []
+
+    @model_validator(mode='after')
+    def set_attrs(self):
+        if self.react:
+            self.react_funcs.append(self.react)
+        if self.listener:
+            self.listeners.append(self.listener)
+        assert self.listeners and self.react_funcs, '未设置感知和行为'
+        return self
 
     def run(self):
         runer = core.RunManager(
