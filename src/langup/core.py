@@ -26,7 +26,7 @@ from langup.listener.schema import SchedulingEvent
 from langup.listener.base import Listener
 from langup.utils.consts import WELCOME
 from langup.utils.models import set_openai_model
-from langup.utils.utils import Continue, get_list, format_print
+from langup.utils.utils import Continue, get_list, format_print, ReactType
 
 logger = logging.getLogger('langup')
 
@@ -53,7 +53,7 @@ def first_init():
     config.first_init = True
 
 
-class Langup(BaseModel):
+class Uploader(BaseModel):
     system: str
     human: str = '{text}'
 
@@ -93,19 +93,39 @@ class Langup(BaseModel):
     @staticmethod
     @chain
     async def react(_dict):
-        pass
-
-    @abc.abstractmethod
-    def run(self):
-        pass
+        return
 
     class Config:
         arbitrary_types_allowed = True
 
 
+class UP(Uploader):
+    listen: Optional[Listener] = None
+    react: Optional[ReactType] = None
+
+    listeners: List[Listener] = []
+    react_funcs: List[ReactType] = []
+
+    @model_validator(mode='after')
+    def set_attrs(self):
+        if self.react:
+            self.react_funcs.append(self.react)
+        if self.listen:
+            self.listeners.append(self.listen)
+        assert self.listeners and self.react_funcs, '未设置感知和行为'
+        return self
+
+    def run(self):
+        runer = RunManager(
+            manager_config=self,
+            chain=(self._prompt | self.model)
+        )
+        runer.forever_run()
+
+
 class RunManager(BaseModel):
     chain: Runnable
-    manager_config: Langup
+    manager_config: Uploader
     extra_inputs: dict = {}
     listener_items: List[Tuple[Listener, int]] = []
 

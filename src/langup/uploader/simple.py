@@ -20,7 +20,7 @@ _user_listener_map = {
 logger = logging.getLogger('langup.simple')
 
 
-class UserInputReplyUP(core.Langup):
+class UserInputReplyUP(core.Uploader):
     name: str = 'AI'
     system: str = '你是一位AI助手'
     listen: Literal['console', 'speech']  # 输入方式
@@ -47,7 +47,7 @@ class UserInputReplyUP(core.Langup):
         runer.forever_run()
 
 
-class UP(core.Langup):
+class UP(core.Uploader):
     listen: Optional[Listener] = None
     react: Optional[ReactType] = None
 

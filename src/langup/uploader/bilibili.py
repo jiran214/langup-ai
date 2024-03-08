@@ -24,7 +24,7 @@ from langup.utils.utils import Continue, BanWordsFilter, KeywordsMatcher
 logger = logging.getLogger('langup.bilibili')
 
 
-class VideoCommentUP(core.Langup):
+class VideoCommentUP(core.Uploader):
     """
     模版变量:
         output: 生成结果
@@ -93,7 +93,7 @@ class VideoCommentUP(core.Langup):
         runer.forever_run()
 
 
-class ChatUP(core.Langup):
+class ChatUP(core.Uploader):
     system: str = '你是一位聊天AI助手'
 
     @staticmethod
@@ -115,7 +115,7 @@ class ChatUP(core.Langup):
         runer.forever_run()
 
 
-class DynamicUP(core.Langup):
+class DynamicUP(core.Uploader):
     system: str = '你是位B站百万UP主'
     schedulers: Iterable[SchedulingEvent] = Field(description='调度事件列表')
 
@@ -135,7 +135,7 @@ class DynamicUP(core.Langup):
         runer.forever_run()
 
 
-class VtuBer(core.Langup):
+class VtuBer(core.Uploader):
     """
     模版变量:
         text：输入文本描述 弹幕/礼物/定时任务...
