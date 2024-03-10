@@ -70,7 +70,7 @@ class SchedulingEvent(BaseModel):
             if ':' in self.time:
                 self.trigger = 'cron'
                 hours, minutes = self.time.split(':')
-                self.trigger_kwargs = {'hours': int(hours), 'minutes': int(minutes)}
+                self.trigger_kwargs = {'hour': int(hours), 'minute': int(minutes)}
             else:
                 self.trigger = 'interval'
                 if 's' in self.time:

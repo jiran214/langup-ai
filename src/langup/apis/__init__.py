@@ -4,5 +4,4 @@ from langup.apis import (
 
 __all__ = [
     'bilibili',
-
 ]

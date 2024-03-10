@@ -138,8 +138,3 @@ class SummaryGenerator:
 
         return content
 
-
-summary_generator = SummaryGenerator(
-    limit_token=2048,
-    compress_mode='random'
-)

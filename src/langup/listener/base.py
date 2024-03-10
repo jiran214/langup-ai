@@ -5,7 +5,7 @@ import abc
 from pydantic import BaseModel
 
 
-class Listener(BaseModel, abc.ABC):
+class AsyncListener(BaseModel, abc.ABC):
     """监听api 通知绑定消息队列"""
 
     @abc.abstractmethod

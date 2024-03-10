@@ -1,16 +1,9 @@
 """
 全局配置，基本可以作为Uploader参数传入
 """
-import functools
-from typing import Union
-import asyncio
 import os
-from typing import Optional, Literal
-from urllib.request import getproxies
-
-import httpx
+from typing import Optional
 from bilibili_api import Credential
-
 
 work_dir = './'
 
@@ -41,54 +34,19 @@ convert = {
     }
 }
 
-# 字幕控件
-subtitle = {'text_color': "#fa9a19", 'font': ("SimHei", 35, 'bold')}
-
 root = os.path.dirname(__file__)
 
-
-class AuthManager:
-    credential: Optional[Credential] = None
-    openai_kwargs: dict = {}
-
-    def set_bilibili_config(self,
-            sessdata: str, buvid3: str, bili_jct: Optional[str] = None, dedeuserid: Optional[str] = None, ac_time_value: Optional[str] = None
-        ):
-        self.credential = Credential(sessdata=sessdata, buvid3=buvid3, bili_jct=bili_jct, dedeuserid=dedeuserid, ac_time_value=ac_time_value)
-
-    def set_openai_config(
-        self,
-        openai_api_key=None,
-        openai_proxy=None,
-        openai_api_base=None,
-        model="gpt-3.5-turbo",
-        **openai_kwargs
-    ):
-        os.environ.setdefault('OPENAI_API_KEY', openai_api_key)
-        openai_kwargs.update(
-            openai_proxy=openai_proxy,
-            openai_api_key=openai_api_key,
-            openai_api_base=openai_api_base,
-            model=model
-        )
-        for key in openai_kwargs.keys():
-            if V := openai_kwargs.get(key):
-                self.openai_kwargs[key] = V
-
-    @functools.cache
-    def check_bilibili_config(self):
-        self.credential.raise_for_no_sessdata()
-        self.credential.raise_for_no_buvid3()
-        asyncio.run(self.credential.check_valid())
-
-    @functools.cache
-    def check_openai_config(self):
-        assert os.environ.get('OPENAI_API_KEY')
+credential: Optional[Credential] = None
 
 
-auth = AuthManager()
-set_bilibili_config = auth.set_bilibili_config
-set_openai_config = auth.set_openai_config
+def set_bilibili_cookies(
+        sessdata: str, buvid3: str, bili_jct: Optional[str],
+        dedeuserid: Optional[str] = None, ac_time_value: Optional[str] = None
+):
+    global credential
+    credential = Credential(sessdata=sessdata, buvid3=buvid3, bili_jct=bili_jct, dedeuserid=dedeuserid,
+                            ac_time_value=ac_time_value)
+
 
 # 全局proxy，区别于openai_proxy
 proxy = None

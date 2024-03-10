@@ -191,23 +191,7 @@ class KeywordsMatcher(DFA):
         return res and self.keyword_map.get(res[0]['match'])
 
 
-class MQ(abc.ABC):
-    """Listener和Uploader通信"""
-
-    @abc.abstractmethod
-    def send(self, schema):
-        ...
-
-    @abc.abstractmethod
-    def recv(self) -> Any:
-        ...
-
-    @abc.abstractmethod
-    def empty(self):
-        return
-
-
-class SimpleMQ(queue.Queue, MQ):
+class SimpleMQ(queue.Queue):
 
     def recv(self) -> Union[BaseModel, dict]:
         return self.get()
@@ -234,7 +218,7 @@ def set_langchain_debug(v: bool = True):
 def set_logger():
     import logging
     logger = logging.getLogger('langup')
-    # 给logger添加handler
     logger.addHandler(logging.StreamHandler())
     logger.setLevel(logging.DEBUG)
+    return logger
 

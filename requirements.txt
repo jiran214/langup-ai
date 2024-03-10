@@ -4,7 +4,7 @@ openai==0.28.0
 langchain==0.1.11
 ratelimit==2.2.1
 pygame~=2.5.1
-scipy==1.8
+scipy==1.12
 pyaudio
 langchain_openai
 httpx~=0.24.1
