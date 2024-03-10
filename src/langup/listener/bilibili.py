@@ -1,7 +1,7 @@
 import logging
 import time
 from typing import Optional, List, Any, Iterable, AsyncGenerator
-from bilibili_api.session import Event, Session, EventType
+from bilibili_api.session import Event, Session, EventType, get_at
 from bilibili_api import bvid2aid
 
 from langup import apis, config
@@ -30,7 +30,7 @@ async def SessionAtGenerator(
 ) -> AsyncGenerator[Any, Optional[SessionSchema]]:
     aid_record_map = set()
     while 1:
-        sessions = await apis.bilibili.session.get_at(config.credential)
+        sessions = await get_at(config.credential)
         items = sessions['items']
         if not items:
             yield
@@ -77,7 +77,6 @@ class LiveListener(AsyncListener):
     live_mq: Optional[SimpleMQ] = None
 
     def model_post_init(self, __context: Any) -> None:
-        config.auth.check_bilibili_config()
         self.live_mq = SimpleMQ(maxsize=self.max_size)
         room = apis.bilibili.live.BlLiveRoom(self.room_id, self.live_mq)
         logger.info(f'开启线程:LiveListener')

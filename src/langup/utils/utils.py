@@ -7,7 +7,7 @@ import queue
 import threading
 from asyncio import iscoroutinefunction
 from http.cookiejar import CookieJar
-from typing import Optional, Any, Literal, Callable, List, Union
+from typing import Optional, Any, Literal, Callable, List, Union, Iterable
 import browser_cookie3
 from bilibili_api import sync
 from langchain.chains.base import Chain
@@ -151,7 +151,7 @@ class DFA:
 class BanWordsFilter(DFA):
     default_path = config.root + '/data/ban_words.txt'
 
-    def __init__(self, file_path_list=None, extra_ban_words: Optional[List[str]] = None):
+    def __init__(self, file_path_list=None, extra_ban_words: Optional[Iterable[str]] = None):
         file_path_list = (file_path_list or []) + [self.default_path]
         keyword_list = []
         for path in file_path_list:
@@ -159,7 +159,7 @@ class BanWordsFilter(DFA):
                 line.strip()
                 for line in open(file=path, encoding='utf-8', mode='r').readlines()
             ]
-        keyword_list.extend(extra_ban_words or [])
+        keyword_list.extend((extra_ban_words and list(extra_ban_words)) or [])
         super().__init__(keyword_list)
 
 

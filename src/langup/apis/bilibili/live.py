@@ -13,7 +13,7 @@ from langup.listener.schema import LiveInputType
 
 async def on_danmaku(event_dict):
     input_vars = {
-        'text': event_dict['data']['info'][1],
+        'input': event_dict['data']['info'][1],
         'user_name': event_dict['data']['info'][2][1],
         'time': event_dict['data']['info'][9]['ts'],
         'type': LiveInputType.danmu
@@ -31,7 +31,7 @@ async def on_gift(event_dict):
         'time': info['timestamp'],
         'type': LiveInputType.gift
     }
-    input_vars['text'] = f"{input_vars['user_name']}{input_vars['action']}了{input_vars['giftName']}"
+    input_vars['input'] = f"{input_vars['user_name']}{input_vars['action']}了{input_vars['giftName']}"
     return input_vars
 
 
@@ -41,7 +41,7 @@ async def on_super_chat(event_dict):
     input_vars = {
         'user_name': user_info['uname'],
         'face': user_info['face'],
-        'text': info['message'],
+        'input': info['message'],
         'price': info['price'],
         'time': info['start_time'],
         'type': LiveInputType.danmu

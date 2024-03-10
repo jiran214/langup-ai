@@ -96,6 +96,8 @@ class Process:
         self.threads.append(threading.Thread(target=task))
 
     def add_sche_thread(self, events: Iterable[SchedulingEvent], handler: Runnable):
+        if not events:
+            return
         logger.debug('初始化plugin schedulers')
         sche_listener = SchedulerWrapper()
         for e in events:
