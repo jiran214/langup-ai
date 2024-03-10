@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 
 class AsyncListener(BaseModel, abc.ABC):
-    """监听api 通知绑定消息队列"""
+    """监听api"""
 
     @abc.abstractmethod
     async def alisten(self):

@@ -83,7 +83,7 @@ class SchedulingEvent(BaseModel):
                     raise ValidationError('间隔任务以s h m 结尾')
 
     def get_scheduler_inputs(self):
-        return {'func': func(self.input), 'trigger': self.trigger, **self.trigger_kwargs}
+        return {'func': lambda _: self.input, 'trigger': self.trigger, **self.trigger_kwargs}
 
 
 class KeywordReply(BaseModel):

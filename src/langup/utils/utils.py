@@ -20,6 +20,10 @@ from langup.utils.consts import color_map, style_map
 ReactType = Union[Callable[[Union[str, dict]], Any], Runnable]
 
 
+class Continue(Exception):
+    pass
+
+
 def singleton(cls):
     _instance = {}
 
@@ -30,6 +34,44 @@ def singleton(cls):
         return _instance[cls]
 
     return inner
+
+
+def format_print(text: str, color: str = 'white', style: str = 'normal', end='\n'):
+    color_code = color_map.get(color, "39")
+    style_code = style_map.get(style, "0")
+    print(f"\033[{style_code};{color_code}m{text}\033[0m", end=end)
+
+
+def get_cookies(
+        domain_name: str,
+        browser: Literal[
+            'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
+            'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
+        ] = 'load',
+        key_lower=True
+):
+    cookie_dict = {}
+    try:
+        cj: CookieJar = getattr(browser_cookie3, browser)(domain_name=domain_name)
+        for cookie in cj:
+            name = cookie.name
+            if key_lower:
+                name = name.lower()
+            cookie_dict[name] = cookie.value
+    except PermissionError as e:
+        raise PermissionError("""浏览器文件被占用，遇到此错误请尝试: 任务管理器彻底关闭进程""")
+    return cookie_dict
+
+
+def start_thread(job: Callable):
+    """启动线程"""
+    if iscoroutinefunction(job):
+        sync_job = lambda: sync(job())
+    else:
+        sync_job = job
+    t = threading.Thread(target=sync_job)
+    t.start()
+    return t
 
 
 class DFA:
@@ -105,65 +147,6 @@ class DFA:
         return state_event_dict
 
 
-class Continue(Exception):
-    pass
-
-
-def format_print(text: str, color: str = 'white', style: str = 'normal', end='\n'):
-    color_code = color_map.get(color, "39")
-    style_code = style_map.get(style, "0")
-    print(f"\033[{style_code};{color_code}m{text}\033[0m", end=end)
-
-
-def get_list(item):
-    if isinstance(item, list):
-        return item
-    else:
-        return [item]
-
-
-def get_cookies(
-        domain_name: str,
-        browser: Literal[
-            'chrome', 'chromium', 'opera', 'opera_gx', 'brave',
-            'edge', 'vivaldi', 'firefox', 'librewolf', 'safari', 'load'
-        ] = 'load',
-        key_lower=True
-):
-    cookie_dict = {}
-    try:
-        cj: CookieJar = getattr(browser_cookie3, browser)(domain_name=domain_name)
-        for cookie in cj:
-            name = cookie.name
-            if key_lower:
-                name = name.lower()
-            cookie_dict[name] = cookie.value
-    except PermissionError as e:
-        raise PermissionError("""浏览器文件被占用，遇到此错误请尝试: 任务管理器彻底关闭进程""")
-    return cookie_dict
-
-
-def async_wrapper(fun):
-    """带参数的协程函数变成coroutine对象"""
-
-    @functools.wraps(fun)
-    async def wrap(*args, **kwargs):
-        await fun(*args, **kwargs)
-
-    return wrap
-
-
-def start_thread(job: Callable):
-    """启动线程"""
-    if iscoroutinefunction(job):
-        sync_job = lambda: sync(job())
-    else:
-        sync_job = job
-    t = threading.Thread(target=sync_job)
-    t.start()
-    return t
-
-
 @singleton
 class BanWordsFilter(DFA):
     default_path = config.root + '/data/ban_words.txt'
@@ -201,13 +184,6 @@ class SimpleMQ(queue.Queue):
         if self.maxsize != 0 and self.qsize() == self.maxsize:
             self.get()
         self.put(schema)
-
-
-def func(return_data):
-    def f():
-        return return_data
-
-    return f
 
 
 def set_langchain_debug(v: bool = True):
