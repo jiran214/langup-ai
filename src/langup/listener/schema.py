@@ -4,6 +4,7 @@ import enum
 from typing import TypedDict, Literal, Any, Optional, Union
 
 from langchain.chains.base import Chain
+from langchain_core.runnables import Runnable
 from pydantic import BaseModel, Field, ValidationError
 
 from langup.utils.utils import func
@@ -88,4 +89,4 @@ class SchedulingEvent(BaseModel):
 
 class KeywordReply(BaseModel):
     keyword: str
-    content: Union[str, Chain]
+    content: Union[str, Runnable]
