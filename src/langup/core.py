@@ -29,7 +29,7 @@ def first_init():
         if not config.credential and 'sessdata' in os.environ:
             config.set_bilibili_cookies(
                 **{k: os.environ.get(k) for k in ('sessdata', 'buvid3', 'bili_jct', 'dedeuserid', 'ac_time_value')})
-            logger.debug(f'初始化bilibili_config from env: {config.auth.credential.get_cookies()}')
+            logger.debug(f'初始化bilibili_config from env: {config.credential.get_cookies()}')
         if config.welcome_tip:
             format_print(WELCOME, color='green')
         if config.test_net:
@@ -94,17 +94,6 @@ class Process:
         else:
             raise ValueError(f'不支持的类型:{type(generator)}')
         self.threads.append(threading.Thread(target=task))
-
-    def add_sche_thread(self, events: Iterable[SchedulingEvent], handler: Runnable):
-        if not events:
-            return
-        logger.debug('初始化plugin schedulers')
-        sche_listener = SchedulerWrapper()
-        for e in events:
-            sche_listener.scheduler.add_job(**e.get_scheduler_inputs())
-        logger.debug('启动sche_listener')
-        sche_listener.run()
-        self.add_thread(sche_listener, handler)
 
     def run(self):
         for t in self.threads:
