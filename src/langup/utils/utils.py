@@ -11,7 +11,7 @@ from typing import Optional, Any, Literal, Callable, List, Union, Iterable
 import browser_cookie3
 from bilibili_api import sync
 from langchain.chains.base import Chain
-from langchain_core.runnables import RunnableLambda, Runnable
+from langchain_core.runnables import RunnableLambda, Runnable, chain
 from pydantic import BaseModel
 
 from langup import config
@@ -198,3 +198,29 @@ def set_logger():
     logger.setLevel(logging.DEBUG)
     return logger
 
+
+def import_module(lib, class_name):
+    import importlib
+    module = f'{lib}.{class_name}'
+    try:
+        Module = importlib.import_module(module)
+    except ImportError:
+        raise ImportError(f"Import {lib}.{class_name} error. Please `pip install {lib}`")
+    return Module
+
+
+def has_overridden_method(instance, method_name):
+    method = getattr(instance, method_name)
+
+    for cls in instance.__class__.mro()[1:-1]:
+        if method_name in vars(cls):
+            return method != getattr(cls, method_name)
+    return False
+
+
+def callable_to_chain(func):
+    if isinstance(func, Callable):
+        return chain(func)
+    elif isinstance(func, Runnable):
+        return func
+    raise AttributeError(f"{func} 不为Runnable或可调用对象")

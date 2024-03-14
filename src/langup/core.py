@@ -50,21 +50,6 @@ class Process:
         self.threads = []
         first_init()
 
-    async def handle(self, chain, msg, interval, extra_inputs):
-        logger.debug(f'收到消息:{msg}')
-        if not msg:
-            return
-        try:
-            inputs = {**msg, **extra_inputs}
-            logger.debug(f'运行中chain')
-            await chain.ainvoke(inputs)
-        except Continue as e:
-            logger.info(f'已过滤:{e}')
-            return
-        if interval:
-            logger.debug(f'等待中:{interval}')
-            await asyncio.sleep(interval)
-
     def add_thread(
             self,
             generator: Union[Generator, AsyncGenerator, AsyncListener],
@@ -72,18 +57,33 @@ class Process:
             extra_inputs: dict = None,
             interval: int = 0
     ):
+        async def handle(msg):
+            logger.debug(f'收到消息:{msg}')
+            if not msg:
+                return
+            try:
+                inputs = {**msg, **extra_inputs}
+                logger.debug(f'运行中chain')
+                await handler.ainvoke(inputs)
+            except Continue as e:
+                logger.info(f'已过滤:{e}')
+                return
+            if interval:
+                logger.debug(f'等待中:{interval}')
+                await asyncio.sleep(interval)
+
         async def sync_gen_task():
             for msg in generator:
-                await self.handle(handler, msg, interval, extra_inputs)
+                await handle(msg)
 
         async def async_gen_task():
             async for msg in generator:
-                await self.handle(handler, msg, interval, extra_inputs)
+                await handle(msg)
 
         async def listener_task():
             while 1:
                 msg = await generator.alisten()
-                await self.handle(handler, msg, interval, extra_inputs)
+                await handle(msg)
 
         if isinstance(generator, Generator):
             task = sync_gen_task

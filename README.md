@@ -92,7 +92,7 @@ up = VtuBer(
     # ],
     ## langchain知识库、检索器提供上下文，参考langchain文档 需要自己实例化
     # human="参考上下文:{context}\n{text}",
-    # retriever_map={'context': <class 'langchain_core.retrievers.BaseRetriever'>}
+    # context_map={'context': <class 'langchain_core.contexts.Basecontext'>}
 )
 up.run()
 ```

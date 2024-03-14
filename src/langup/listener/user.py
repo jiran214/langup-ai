@@ -16,15 +16,12 @@ from langup.utils.converts import Audio2Text, Speech2Audio
 
 
 class UserInputListener(AsyncListener, abc.ABC):
-    user_event: threading.Event = Field(default_factory=threading.Event)
 
     @abc.abstractmethod
     def get_input(self): ...
 
     async def alisten(self) -> str:
-        self.user_event.wait()
         user_input = self.get_input()
-        self.user_event.clear()
         return user_input
 
 

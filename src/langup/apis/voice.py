@@ -23,7 +23,13 @@ async def tts_save(text):
     return path
 
 
-def play_sound(file_path: str):
+def list_voices():
+    pprint(asyncio.run(edge_tts.list_voices()))
+
+
+async def tts_speak(audio_txt: str):
+    file_path = await tts_save(audio_txt)
+
     with audio_lock:
         # 播放生成的语音文件
         mixer.init()
@@ -35,13 +41,5 @@ def play_sound(file_path: str):
         mixer.music.stop()
         mixer.quit()
 
-
-def list_voices():
-    pprint(asyncio.run(edge_tts.list_voices()))
-
-
-async def tts_speak(audio_txt: str):
-    path = await tts_save(audio_txt)
-    play_sound(path)
 
 

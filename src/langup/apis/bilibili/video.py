@@ -6,22 +6,17 @@ import os
 from typing import Optional, List
 
 import httpx
+import requests
 from bilibili_api import video, HEADERS, sync
 from requests import Session
+
+from langup import config
 from langup.apis.bilibili.schema import BiliNoteView, NoteAISummary
+from langup.utils import converts
+from langup.utils.utils import Continue
 
-session = Session()
-session.headers = {
-    'User-Agent': """Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0""",
-    'referer': """https://www.bilibili.com/video/BV1wj411y7pq/?spm_id_from=333.1007.tianma.1-2-2.click&vd_source=3d9525035e29a1361801ce820151e270""",
-    'origin': "https://www.bilibili.com",
-}
-session.trust_env = False
 logger = logging.getLogger('langup.api')
-
-
-def trans_time(timestamp):
-    return datetime.datetime.fromtimestamp(timestamp).strftime("%H:%M")
+_summary_generator = converts.SummaryGenerator(limit_token=2048)
 
 
 class Video(video.Video):
@@ -83,7 +78,7 @@ class Video(video.Video):
                 return
             # AI字幕
             url = 'https:' + subtitles[0]['subtitle_url']
-            r = session.get(url)
+            r = requests.get(url)
             # [{'from': 0.0, 'to': 7.0, 'location': 2, 'content': ''},
             return r.json()['body']
         # 普通字幕(好像没了)
@@ -117,7 +112,7 @@ class Video(video.Video):
         outlines = ""
         for outline_item in self.__summary_info.outline:
             outlines += f"\n### {outline_item.title}\n" + '\n'.join([
-                outline.format(time=trans_time(part_item.timestamp), content=part_item.content)
+                outline.format(time=datetime.datetime.fromtimestamp(part_item.timestamp).strftime("%H:%M"), content=part_item.content)
                 for part_item in outline_item.part_outline
             ])
         md = md.format(
@@ -127,6 +122,26 @@ class Video(video.Video):
             outlines=outlines
         )
         return md
+
+
+# 新版本官方提供了总结接口
+async def get_summary(aid):
+    # 获取summary
+    video = Video(aid=aid, credential=config.credential)
+    summary = await video.get_md_summary()
+    logger.debug("Video API 该视频无AI总结，尝试提取字幕")
+    if not summary:
+        video_content_list = await converts.Audio2Text.from_bilibili_video(video)
+        if video.info.duration > 60 * 60:
+            logger.debug(f'过滤,视频时长超出限制: {60 * 60}')
+            raise Continue('提取摘要失败')
+        if not video_content_list:
+            logger.error('查找字幕资源失败')
+            raise Continue('提取摘要失败')
+        summary = _summary_generator.generate(video_content_list)
+        record = summary.replace('\n', '')
+        logger.debug(f"获取摘要成功:{record[:10]}...{record[-10:]}")
+    return summary
 
 
 if __name__ == '__main__':

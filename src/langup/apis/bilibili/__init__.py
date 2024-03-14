@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from bilibili_api import comment, user, dynamic, Credential, sync
-from langup.apis.bilibili import video, live, session
+from langup.apis.bilibili import video, live
 
 __all__ = [
     comment,
@@ -11,5 +11,4 @@ __all__ = [
     sync,
     dynamic,
     Credential,
-    session
 ]
