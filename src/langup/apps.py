@@ -99,7 +99,6 @@ class VideoCommentUP(ChatFlow):
             signals:  暗号列表
 
         Returns:
-
         """
         process = Process()
         process.add_thread(SessionAtGenerator(signals=signals), self.get_flow(), interval=interval)

@@ -17,8 +17,6 @@ from pydantic import BaseModel
 from langup import config
 from langup.utils.consts import color_map, style_map
 
-ReactType = Union[Callable[[Union[str, dict]], Any], Runnable]
-
 
 class Continue(Exception):
     pass

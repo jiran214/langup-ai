@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import asyncio
+import functools
 import logging
 import os
 import threading
-from typing import Any, Iterable, Optional, Dict, List, Tuple, Union, Callable, Generator, AsyncGenerator
+from typing import Any, Iterable, Optional, Dict, List, Tuple, Union, Callable, Generator, AsyncGenerator, Type
 from urllib.request import getproxies
 
 import bilibili_api
@@ -13,12 +14,11 @@ import openai
 from bilibili_api import sync
 from langchain_core.runnables import Runnable
 
-from langup import config
-from langup.listener.utils import SchedulerWrapper
-from langup.listener.schema import SchedulingEvent
+from langup import config, ListenerType
+from langup.builder.base import Flow
 from langup.listener.base import AsyncListener
 from langup.utils.consts import WELCOME
-from langup.utils.utils import Continue, format_print, ReactType
+from langup.utils.utils import Continue, format_print
 
 logger = logging.getLogger('langup')
 
@@ -52,11 +52,14 @@ class Process:
 
     def add_thread(
             self,
-            generator: Union[Generator, AsyncGenerator, AsyncListener],
-            handler: Runnable,
-            extra_inputs: dict = None,
+            generator: ListenerType,
+            handler: Union[Runnable, Flow],
+            extra_inputs: Optional[dict] = None,
             interval: int = 0
     ):
+        if isinstance(handler, Flow):
+            handler = handler.get_flow()
+
         async def handle(msg):
             logger.debug(f'收到消息:{msg}')
             if not msg:
@@ -100,6 +103,3 @@ class Process:
             t.start()
         for t in self.threads:
             t.join()
-
-    def loop(self):
-        self.run()

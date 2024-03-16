@@ -7,8 +7,6 @@ from langchain.chains.base import Chain
 from langchain_core.runnables import Runnable
 from pydantic import BaseModel, Field, ValidationError
 
-from langup.utils.utils import func
-
 
 class SessionSchema(TypedDict):
     user_nickname: str
