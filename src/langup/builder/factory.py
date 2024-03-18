@@ -3,7 +3,7 @@
 from typing import Iterable
 
 from langup.builder.base import Flow, ContextBuilder, LLMBuilder, ReactBuilder
-from langup.builder.simple import ChatModelBuilder
+from langup.builder.extend import ChatModelBuilder
 
 
 def get_flow(base_class=Flow, builders: Iterable = tuple()):
