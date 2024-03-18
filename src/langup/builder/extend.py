@@ -54,3 +54,11 @@ class AgentBuilder(ChatModelBuilder):
         # Create an agent executor by passing in the agent and tools
         agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=verbose)
         self.chain = agent_executor
+
+
+class KeywordRouteBuilder(base.LLMBuilder):
+    pass
+
+
+class ReactFilterBuilder(base.ReactBuilder):
+    pass
