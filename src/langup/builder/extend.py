@@ -45,7 +45,7 @@ class ChatModelBuilder(base.LLMBuilder):
         return self
 
 
-class AgentBuilder(ChatModelBuilder):
+class AgentBuilder(base.LLMBuilder):
     def set_agent(self, tools: Sequence[BaseTool], verbose=True):
         assert self.llm, 'Please set llm first'
         assert isinstance(self.llm, BaseLanguageModel)
