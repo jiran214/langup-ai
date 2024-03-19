@@ -2,25 +2,52 @@
 # -*- coding: utf-8 -*-
 from typing import Iterable
 
-from langup.builder.base import Flow, ContextBuilder, LLMBuilder, ReactBuilder
-from langup.builder.extend import ChatModelBuilder
+from langchain_core.runnables import Runnable, RunnableAssign, RunnablePassthrough, chain
+from pydantic import Field
+
+from langup.builder.base import ContextBuilder, LLMBuilder, ReactBuilder
+from langup.builder.extends import ChatModelBuilder, KeywordRouteBuilder, ReactFilterBuilder, AgentBuilder
 
 
-def get_flow(base_class=Flow, builders: Iterable = tuple()):
-    _classes = []
-    for _class in builders:
-        expected = issubclass(_class, (ContextBuilder, LLMBuilder, ReactBuilder))
-        assert expected, 'plugin 不属于(contextBuilder, LLMBuilder, ReactBuilder)'
-        _classes.append(_class)
-    _classes.append(base_class)
-    return type('ChainBuilder', tuple(_classes), {})
+class Flow(ContextBuilder, LLMBuilder, ReactBuilder):
+    """编排节点"""
+    llm_output_key: str = Field('output', description='llm输出key名称')
+
+    def get_flow(self) -> Runnable:
+        """
+        默认flow 感知 -> (上下文 -> 思考 -> 行为)
+        Returns:
+            langchain Runnable
+        """
+        return (
+            RunnableAssign(**self.context)
+            | RunnableAssign(**{self.llm_output_key: self.get_brain()})
+            | self.react
+        )
 
 
-def get_chat_flow(builders: Iterable = tuple()):
-    builders = list(builders)
-    builders.append(ChatModelBuilder)
-    return get_flow(builders=builders)
-
-
-class ChatFlow(Flow, ChatModelBuilder):
+class SimpleFlow(Flow, ChatModelBuilder):
     pass
+
+
+class ChatFlow(Flow, KeywordRouteBuilder, ReactFilterBuilder, AgentBuilder):
+
+    def get_flow(self) -> Runnable:
+        """
+        flow 感知 -> (上下文 -> 反射/思考 -> 过滤 ->行为)
+        Returns:
+            langchain Runnable
+        """
+        @chain
+        def route():
+            if self._keyword_chain and (keyword_res := self._keyword_chain):
+                return keyword_res
+            return self.get_brain()
+
+        _chain = (
+            RunnableAssign(**self.context)
+            | RunnableAssign(**{self.llm_output_key: route})
+            | self._filter_chain
+            | self.react
+        )
+        return _chain

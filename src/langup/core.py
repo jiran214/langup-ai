@@ -15,7 +15,7 @@ from bilibili_api import sync
 from langchain_core.runnables import Runnable
 
 from langup import config, ListenerType
-from langup.builder.base import Flow
+from langup.builder.factory import Flow
 from langup.listener.base import AsyncListener
 from langup.utils.consts import WELCOME
 from langup.utils.utils import Continue, format_print

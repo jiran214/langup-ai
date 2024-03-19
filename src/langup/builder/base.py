@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import time
-from abc import ABC
 from typing import Union, Callable, Iterable, Dict, Optional
 
-from langchain_core.runnables import RunnablePassthrough, Runnable, chain, RunnableParallel, RunnableAssign, RunnableGenerator
+from langchain_core.runnables import RunnablePassthrough, Runnable, chain, RunnableParallel
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.language_models import BaseLanguageModel
 from pydantic import BaseModel, model_validator, Field
 
 from langup.utils.utils import has_overridden_method, callable_to_chain
@@ -83,18 +81,3 @@ class ReactBuilder(Builder):
         return self
 
 
-class Flow(ContextBuilder, LLMBuilder, ReactBuilder):
-    """编排节点"""
-    llm_output_key: str = Field('output', description='llm输出key名称')
-
-    def get_flow(self) -> Runnable:
-        """
-        默认flow 感知 -> (上下文 -> 思考 -> 行为)
-        Returns:
-            langchain Runnable
-        """
-        return (
-            RunnableAssign(**self.context)
-            | RunnableAssign(**{self.llm_output_key: self.get_brain()})
-            | self.react
-        )

@@ -61,7 +61,7 @@ class DynamicUP(ChatFlow):
 
 class ChatUP(ChatFlow):
     async def _areact(self, _dict):
-        await send_msg(config.credential, _dict['sender_uid'], EventType.TEXT, _dict['output'])
+        await send_msg(config.credential, _dict['sender_uid'], EventType.TEXT, _dict[self.llm_output_key])
 
     def run(self):
         process = Process()
@@ -87,7 +87,7 @@ class VideoCommentUP(ChatFlow):
     )
 
     async def _areact(self, _dict):
-        content = self.reply_temple.format(output=_dict['output'], nickname=_dict['user_nickname'])
+        content = self.reply_temple.format(output=_dict[self.llm_output_key], nickname=_dict['user_nickname'])
         logger.info(f'准备发送文本:{content}')
         await send_comment(text=content, type_=CommentResourceType.VIDEO, oid=_dict['aid'], credential=config.credential)
 
@@ -107,31 +107,16 @@ class VideoCommentUP(ChatFlow):
 
 class VUP(ChatFlow):
     system: str = '你是一个Bilibili主播\n请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n'
-    is_filter: bool = Field(True, description='是否过滤违禁词')
-    keyword_replies: Iterable[KeywordReply] = tuple()  # 关键词指定回复
-    extra_ban_words: Iterable[str] = Field(tuple(), description='额外违禁词列表')
-    ban_word_filter: Optional[BanWordsFilter] = PrivateAttr()
-    keywords_matcher: Optional[KeywordsMatcher] = PrivateAttr()
 
-    def model_post_init(self, __context: Any) -> None:
-        if self.is_filter:
-            self.ban_word_filter = BanWordsFilter(extra_ban_words=self.extra_ban_words)
-        if self.keyword_replies:
-            self.keywords_matcher = KeywordsMatcher({reply.keyword: reply.content for reply in self.keyword_replies})
-
-    async def _areact(self, _content):
-        if kws := self.ban_word_filter.match(_content):
-            raise Continue(f'包含违禁词:{_content}/{kws}')
-        await voice.tts_speak(_content)
+    async def _areact(self, _dict):
+        await voice.tts_speak(_dict[self.llm_output_key])
 
     def get_brain(self):
         """路由分支，对弹幕和用户输入使用llm生成，另外输入方式直接输出 <input>"""
         @chain
         def route(_dict: dict):
             if _dict['type'] in {LiveInputType.danmu, LiveInputType.user}:
-                if self.keywords_matcher and (callback := self.keywords_matcher.match(_dict['input'])):
-                    return callback
-                return self.get_brain()
+                return super().get_brain()
             elif _dict['type'] is {LiveInputType.direct, LiveInputType.gift}:
                 return _dict['input']
         return route
@@ -152,11 +137,7 @@ class VUP(ChatFlow):
         """
         # 构建
         process = Process()
-        _chain = self.get_brain()
+        _chain = self.get_flow()
         process.add_thread(SchedulerWrapper(events=events), _chain)
         process.add_thread(LiveListener(room_id=room_id), _chain)
         process.run()
-
-
-if __name__ == '__main__':
-    V
