@@ -18,7 +18,6 @@ from langup.listener.schema import SchedulingEvent, KeywordReply, LiveInputType
 from langup.listener.user import ConsoleListener, SpeechListener
 from langup.listener.utils import SchedulerWrapper
 from langup.utils import utils
-from langup.utils.utils import BanWordsFilter, KeywordsMatcher, Continue
 
 logger = logging.getLogger('langup')
 

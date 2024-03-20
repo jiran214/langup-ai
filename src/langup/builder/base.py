@@ -33,6 +33,8 @@ class LLMBuilder(Builder):
     llm: Runnable = Field(default_factory=RunnablePassthrough, description='langchain llm model')
     parser: Runnable = Field(default_factory=StrOutputParser, description='langchain output_parser')
     chain: Optional[Runnable] = Field(None, description='手动传入chain替代builder原始chain')
+    """llm输出key"""
+    llm_output_key: str = Field('output', description='llm输出key名称')
 
     def get_brain(self):
         return self.chain or (self.prompt | self.llm | self.parser)
@@ -77,7 +79,7 @@ class ReactBuilder(Builder):
         if len(react_map) == 1:
             _, self.react = react_map.popitem()
         else:
-            self.react = RunnableParallel(react_map)
+            self.react = react_map
         return self
 
 
