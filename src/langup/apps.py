@@ -8,9 +8,9 @@ from bilibili_api.comment import send_comment, CommentResourceType
 from bilibili_api.dynamic import send_dynamic, BuildDynamic
 from bilibili_api.session import send_msg, EventType
 from langchain_core.runnables import chain
-from pydantic import PrivateAttr, Field
+from pydantic import Field
 
-from langup import Process, ChatFlow, config
+from langup import Process, ReflectFlow, config
 from langup.apis import voice
 from langup.apis.bilibili.video import get_summary
 from langup.listener.bilibili import ChatListener, SessionAtGenerator, LiveListener
@@ -23,7 +23,7 @@ from langup.utils.utils import BanWordsFilter, KeywordsMatcher, Continue
 logger = logging.getLogger('langup')
 
 
-class HumanInReplyUP(ChatFlow):
+class HumanInReplyUP(ReflectFlow):
     async def _areact(self, _content):
         # 语音实时识别回复
         # 语音识别参数见config.convert
@@ -40,7 +40,7 @@ class HumanInReplyUP(ChatFlow):
         process.run()
 
 
-class DynamicUP(ChatFlow):
+class DynamicUP(ReflectFlow):
     """
     DynamicUP(...)
         events=[
@@ -59,7 +59,7 @@ class DynamicUP(ChatFlow):
         process.run()
 
 
-class ChatUP(ChatFlow):
+class ChatUP(ReflectFlow):
     async def _areact(self, _dict):
         await send_msg(config.credential, _dict['sender_uid'], EventType.TEXT, _dict[self.llm_output_key])
 
@@ -69,7 +69,7 @@ class ChatUP(ChatFlow):
         process.run()
 
 
-class VideoCommentUP(ChatFlow):
+class VideoCommentUP(ReflectFlow):
     context: dict = {'summary': itemgetter('aid') | chain(get_summary)}
     system: str = Field("你是一位B站用戶，帮助我总结视频！", description='system role提示词')
     human: str = Field(
@@ -105,7 +105,7 @@ class VideoCommentUP(ChatFlow):
         process.run()
 
 
-class VUP(ChatFlow):
+class VUP(ReflectFlow):
     system: str = '你是一个Bilibili主播\n请你遵守中华人民共和国社会主义核心价值观和平台直播规范，不允许在对话中出现政治、色情、暴恐等敏感词。\n'
 
     async def _areact(self, _dict):

@@ -1,6 +1,6 @@
-from langup.builder.factory import get_chat_flow, get_flow, ChatFlow
+from langup.builder.director import ReflectFlow, SimpleFlow
 from langup.core import Process
-from langup.utils.utils import get_cookies, set_langchain_debug, set_logger, ReactType
+from langup.utils.utils import get_cookies, set_langchain_debug, set_logger
 
 __version__ = '0.0.2'
 
@@ -23,6 +23,8 @@ __all__ = [
     'ReactType',
     'ListenerType',
 
+    'ReflectFlow',
+    'SimpleFlow',
 
     'config',
     'Process'

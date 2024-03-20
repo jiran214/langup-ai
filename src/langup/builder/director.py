@@ -30,7 +30,7 @@ class SimpleFlow(Flow, ChatModelBuilder):
     pass
 
 
-class ChatFlow(Flow, KeywordRouteBuilder, ReactFilterBuilder, AgentBuilder):
+class ReflectFlow(Flow, KeywordRouteBuilder, ReactFilterBuilder, AgentBuilder):
 
     def get_flow(self) -> Runnable:
         """
